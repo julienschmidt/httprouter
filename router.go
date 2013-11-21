@@ -15,6 +15,20 @@ import (
 // parameters.
 type HandlerFunc func(http.ResponseWriter, *http.Request, map[string]string)
 
+// NotFound is the default HTTP handler func for routes that can't be matched
+// with an existing route.
+// NotFound tries to redirect to a canonical URL generated with CleanPath
+func NotFound(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "CONNECT" {
+		if p := CleanPath(req.URL.Path); p != req.URL.Path && p != req.Referer() {
+			http.Redirect(w, req, p, http.StatusMovedPermanently)
+			return
+		}
+	}
+
+	http.NotFound(w, req)
+}
+
 // Router is a http.Handler which can be used to dispatch requests to different
 // handler functions via configurable routes
 type Router struct {
@@ -47,7 +61,7 @@ var _ http.Handler = New()
 func New() *Router {
 	return &Router{
 		RedirectTrailingSlash: true,
-		NotFound:              http.NotFound,
+		NotFound:              NotFound,
 	}
 }
 
