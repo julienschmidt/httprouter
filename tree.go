@@ -193,8 +193,9 @@ func (n *node) getValue(key string) (value HandlerFunc, vars map[string]string, 
 	// Walk tree nodes
 OUTER:
 	for len(key) >= len(n.key) && key[:len(n.key)] == n.key {
+		key = key[len(n.key):]
 
-		if len(key) == len(n.key) {
+		if len(key) == 0 {
 			// Check if this node has a registered handler
 			if value = n.value; value != nil {
 				return
@@ -212,7 +213,6 @@ OUTER:
 			return
 
 		} else if n.wildChild == true {
-			key = key[len(n.key):]
 			n = n.children[0]
 
 			if n.isParam {
@@ -271,7 +271,6 @@ OUTER:
 			}
 
 		} else {
-			key = key[len(n.key):]
 			c := key[0]
 
 			for i, index := range n.indices {

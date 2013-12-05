@@ -127,8 +127,8 @@ func TestTreeWildcard(t *testing.T) {
 		{"/src/", true, "", nil},
 		{"/src/some/file.png", false, "/src/*filepath", map[string]string{"filepath": "some/file.png"}},
 		{"/search/", false, "/search/", nil},
-		{"/search/some+cräzy+sh!t", false, "/search/:query", map[string]string{"query": "some+cräzy+sh!t"}},
-		{"/search/some+cräzy+sh!t/", true, "", map[string]string{"query": "some+cräzy+sh!t"}},
+		{"/search/someth!ng+in+ünìcodé", false, "/search/:query", map[string]string{"query": "someth!ng+in+ünìcodé"}},
+		{"/search/someth!ng+in+ünìcodé/", true, "", map[string]string{"query": "someth!ng+in+ünìcodé"}},
 		{"/user_gopher", false, "/user_:name", map[string]string{"name": "gopher"}},
 		{"/user_gopher/about", false, "/user_:name/about", map[string]string{"name": "gopher"}},
 	})
@@ -235,7 +235,7 @@ func TestTreeDupliatePath(t *testing.T) {
 		{"/", false, "/", nil},
 		{"/doc/", false, "/doc/", nil},
 		{"/src/some/file.png", false, "/src/*filepath", map[string]string{"filepath": "some/file.png"}},
-		{"/search/some+cräzy+sh!t", false, "/search/:query", map[string]string{"query": "some+cräzy+sh!t"}},
+		{"/search/someth!ng+in+ünìcodé", false, "/search/:query", map[string]string{"query": "someth!ng+in+ünìcodé"}},
 		{"/user_gopher", false, "/user_:name", map[string]string{"name": "gopher"}},
 	})
 }
