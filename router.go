@@ -3,7 +3,7 @@
 // in the LICENSE file.
 
 // A radix tree based HTTP request router
-package router
+package httprouter
 
 import (
 	"errors"
