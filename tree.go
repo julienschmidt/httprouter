@@ -204,7 +204,8 @@ OUTER:
 			// trailing slash exists for TSR recommendation
 			for i, index := range n.indices {
 				if index == '/' {
-					tsr = n.children[i].key == "/" && n.children[i].value != nil
+					n = n.children[i]
+					tsr = (n.key == "/" && n.value != nil)
 					return
 				}
 			}
@@ -240,7 +241,7 @@ OUTER:
 						n = n.children[0]
 						continue
 					} else { // ... but we can't
-						tsr = l == k+1
+						tsr = (l == k+1)
 						return
 					}
 				}
@@ -251,7 +252,7 @@ OUTER:
 					// No handler found. Check if a handler for this path + a
 					// trailing slash exists for TSR recommendation
 					n = n.children[0]
-					tsr = n.key == "/" && n.value != nil
+					tsr = (n.key == "/" && n.value != nil)
 				}
 				return
 
@@ -282,7 +283,7 @@ OUTER:
 
 			// Nothing found. We can recommend to redirect to the same URL without
 			// a trailing slash if a leaf exists for that path
-			tsr = key == "/" && n.value != nil
+			tsr = (key == "/" && n.value != nil)
 			return
 		}
 	}
