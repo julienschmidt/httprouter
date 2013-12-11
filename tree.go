@@ -4,24 +4,12 @@
 
 package httprouter
 
-import (
-	"errors"
-)
-
 func min(a, b int) int {
 	if a <= b {
 		return a
 	}
 	return b
 }
-
-var (
-	ErrDuplicatePath     = errors.New("a Handle is already registered for this method at this path")
-	ErrEmptyWildcardName = errors.New("wildcards must be named with a non-empty name")
-	ErrCatchAllConflict  = errors.New("catchAlls are only allowed at the end of the path")
-	ErrChildConflict     = errors.New("can't insert a wildcard route because this path has existing children")
-	ErrWildCardConflict  = errors.New("conflict with wildcard route")
-)
 
 type node struct {
 	// parent *node
@@ -36,7 +24,7 @@ type node struct {
 
 // addRoute adds a leaf with the given handle to the path.
 // Attention! Not concurrency-safe!
-func (n *node) addRoute(method, path string, handle Handle) error {
+func (n *node) addRoute(method, path string, handle Handle) {
 	// non-empty tree
 	if len(n.path) != 0 {
 	OUTER:
@@ -72,14 +60,13 @@ func (n *node) addRoute(method, path string, handle Handle) error {
 
 					// Check if the wildcard matches
 					if len(path) >= len(n.path) && n.path == path[:len(n.path)] {
-						// check for longer wildcard, e.g. :name and :namex
-						if len(n.path) < len(path) && path[len(n.path)] != '/' {
-							return ErrWildCardConflict
+						// check for longer wildcard, e.g. :name and :names
+						if len(n.path) >= len(path) || path[len(n.path)] == '/' {
+							continue OUTER
 						}
-						continue OUTER
-					} else {
-						return ErrWildCardConflict
 					}
+
+					panic("conflict with wildcard route")
 				}
 
 				c := path[0]
@@ -105,7 +92,8 @@ func (n *node) addRoute(method, path string, handle Handle) error {
 
 					n = child
 				}
-				return n.insertChild(method, path, handle)
+				n.insertChild(method, path, handle)
+				return
 
 			} else if i == len(path) { // Make node a (in-path) leaf
 				if n.handle == nil {
@@ -114,19 +102,19 @@ func (n *node) addRoute(method, path string, handle Handle) error {
 					}
 				} else {
 					if n.handle[method] != nil {
-						return ErrDuplicatePath
+						panic("a Handle is already registered for this method at this path")
 					}
 					n.handle[method] = handle
 				}
 			}
-			return nil
+			return
 		}
 	} else { // Empty tree
-		return n.insertChild(method, path, handle)
+		n.insertChild(method, path, handle)
 	}
 }
 
-func (n *node) insertChild(method, path string, handle Handle) error {
+func (n *node) insertChild(method, path string, handle Handle) {
 	var offset int
 
 	// find prefix until first wildcard (beginning with ':'' or '*'')
@@ -135,7 +123,7 @@ func (n *node) insertChild(method, path string, handle Handle) error {
 			// Check if this Node existing children which would be
 			// unreachable if we insert the wildcard here
 			if len(n.children) > 0 {
-				return ErrChildConflict
+				panic("wildcard route conflicts with existing children")
 			}
 
 			// find wildcard end (either '/'' or path end)
@@ -145,11 +133,11 @@ func (n *node) insertChild(method, path string, handle Handle) error {
 			}
 
 			if k-i == 1 {
-				return ErrEmptyWildcardName
+				panic("wildcards must be named with a non-empty name")
 			}
 
 			if b == '*' && len(path) != k {
-				return ErrCatchAllConflict
+				panic("catchAlls are only allowed at the end of the path")
 			}
 
 			// split path at the beginning of the wildcard
@@ -187,8 +175,6 @@ func (n *node) insertChild(method, path string, handle Handle) error {
 	n.handle = map[string]Handle{
 		method: handle,
 	}
-
-	return nil
 }
 
 // Returns the handle registered with the given path (key). The values of

@@ -75,9 +75,7 @@ func TestTreeAddAndGet(t *testing.T) {
 		"/doc/go1.html",
 	}
 	for _, route := range routes {
-		if err := tree.addRoute("GET", route, fakeHandler(route)); err != nil {
-			t.Fatalf("error inserting route '%s': %s", route, err.Error())
-		}
+		tree.addRoute("GET", route, fakeHandler(route))
 	}
 
 	//printChildren(tree, "")
@@ -112,9 +110,7 @@ func TestTreeWildcard(t *testing.T) {
 		"/doc/go1.html",
 	}
 	for _, route := range routes {
-		if err := tree.addRoute("GET", route, fakeHandler(route)); err != nil {
-			t.Fatalf("error inserting route '%s': %s", route, err.Error())
-		}
+		tree.addRoute("GET", route, fakeHandler(route))
 	}
 
 	//printChildren(tree, "")
@@ -134,13 +130,42 @@ func TestTreeWildcard(t *testing.T) {
 	})
 }
 
-func TestTreeWildcardConflict(t *testing.T) {
+func catchPanic(testFunc func()) (recv interface{}) {
+	defer func() {
+		recv = recover()
+	}()
+
+	testFunc()
+	return
+}
+
+type testRoute struct {
+	path     string
+	conflict bool
+}
+
+func testRoutes(t *testing.T, routes []testRoute) {
 	tree := &node{}
 
-	routes := [...]struct {
-		path     string
-		conflict bool
-	}{
+	for _, route := range routes {
+		recv := catchPanic(func() {
+			tree.addRoute("GET", route.path, nil)
+		})
+
+		if route.conflict {
+			if recv == nil {
+				t.Errorf("no panic for conflicting route '%s'", route.path)
+			}
+		} else if recv != nil {
+			t.Errorf("unexpected panic for route '%s': %v", route.path, recv)
+		}
+	}
+
+	//printChildren(tree, "")
+}
+
+func TestTreeWildcardConflict(t *testing.T) {
+	routes := []testRoute{
 		{"/cmd/:tool/:sub", false},
 		{"/cmd/vet", true},
 		{"/src/*filepath", false},
@@ -153,29 +178,11 @@ func TestTreeWildcardConflict(t *testing.T) {
 		{"/id:id", false},
 		{"/id/:id", true},
 	}
-	for _, route := range routes {
-		err := tree.addRoute("GET", route.path, nil)
-		if err == ErrWildCardConflict {
-			if !route.conflict {
-				t.Errorf("unexpected WildcardConflict for route '%s'", route.path)
-			}
-		} else if err != nil {
-			t.Errorf("unexpected error for route '%s': %v", route.path, err)
-		} else if route.conflict {
-			t.Errorf("no error for conflicting route '%s'", route.path)
-		}
-	}
-
-	//printChildren(tree, "")
+	testRoutes(t, routes)
 }
 
 func TestTreeChildConflict(t *testing.T) {
-	tree := &node{}
-
-	routes := [...]struct {
-		path     string
-		conflict bool
-	}{
+	routes := []testRoute{
 		{"/cmd/vet", false},
 		{"/cmd/:tool/:sub", true},
 		{"/src/AUTHORS", false},
@@ -187,20 +194,7 @@ func TestTreeChildConflict(t *testing.T) {
 		{"/:id", true},
 		{"/*filepath", true},
 	}
-	for _, route := range routes {
-		err := tree.addRoute("GET", route.path, nil)
-		if err == ErrChildConflict {
-			if !route.conflict {
-				t.Errorf("unexpected ErrCatchAllConflict for route '%s'", route.path)
-			}
-		} else if err != nil {
-			t.Errorf("unexpected error for route '%s': %v", route.path, err)
-		} else if route.conflict {
-			t.Errorf("no error for conflicting route '%s'", route.path)
-		}
-	}
-
-	//printChildren(tree, "")
+	testRoutes(t, routes)
 }
 
 func TestTreeDupliatePath(t *testing.T) {
@@ -214,18 +208,19 @@ func TestTreeDupliatePath(t *testing.T) {
 		"/user_:name",
 	}
 	for _, route := range routes {
-		if err := tree.addRoute("GET", route, fakeHandler(route)); err != nil {
-			t.Fatalf("error inserting route '%s': %s", route, err.Error())
+		recv := catchPanic(func() {
+			tree.addRoute("GET", route, fakeHandler(route))
+		})
+		if recv != nil {
+			t.Fatalf("panic inserting route '%s': %v", route, recv)
 		}
 
 		// Add again
-		err := tree.addRoute("GET", route, nil)
-		if err == ErrDuplicatePath {
-			// everything is fine
-		} else if err != nil {
-			t.Errorf("unexpected error for duplicate route '%s': %v", route, err)
-		} else {
-			t.Fatalf("no error for duplicate route '%s", route)
+		recv = catchPanic(func() {
+			tree.addRoute("GET", route, nil)
+		})
+		if recv == nil {
+			t.Fatalf("no panic while inserting duplicate route '%s", route)
 		}
 	}
 
@@ -250,34 +245,22 @@ func TestEmptyWildcardName(t *testing.T) {
 		"/src/*",
 	}
 	for _, route := range routes {
-		if err := tree.addRoute("GET", route, nil); err != ErrEmptyWildcardName {
-			t.Errorf("expected ErrEmptyWildcardName for route '%s', got: %v", route, err)
+		recv := catchPanic(func() {
+			tree.addRoute("GET", route, nil)
+		})
+		if recv == nil {
+			t.Fatalf("no panic while inserting route with empty wildcard name '%s", route)
 		}
 	}
 }
 
 func TestTreeCatchAllConflict(t *testing.T) {
-	tree := &node{}
-
-	routes := [...]struct {
-		path     string
-		conflict bool
-	}{
+	routes := []testRoute{
 		{"/src/*filepath/x", true},
 		{"/src2/", false},
 		{"/src2/*filepath/x", true},
 	}
-	for _, route := range routes {
-		if route.conflict {
-			if err := tree.addRoute("GET", route.path, nil); err != ErrCatchAllConflict {
-				t.Errorf("expected ErrCatchAllConflict for route '%s', got: %v", route.path, err)
-			}
-		} else {
-			if err := tree.addRoute("GET", route.path, nil); err != nil {
-				t.Fatalf("error inserting route '%s': %s", route.path, err.Error())
-			}
-		}
-	}
+	testRoutes(t, routes)
 }
 
 /*func TestTreeDuplicateWildcard(t *testing.T) {
@@ -316,8 +299,11 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/no/b",
 	}
 	for _, route := range routes {
-		if err := tree.addRoute("GET", route, fakeHandler(route)); err != nil {
-			t.Fatalf("error inserting route '%s': %s", route, err.Error())
+		recv := catchPanic(func() {
+			tree.addRoute("GET", route, fakeHandler(route))
+		})
+		if recv != nil {
+			t.Fatalf("panic inserting route '%s': %v", route, recv)
 		}
 	}
 

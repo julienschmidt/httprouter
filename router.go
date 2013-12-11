@@ -6,7 +6,6 @@
 package httprouter
 
 import (
-	"errors"
 	"net/http"
 )
 
@@ -67,31 +66,31 @@ func New() *Router {
 }
 
 // GET is a shortcut for router.Handle("GET", path, handle)
-func (r *Router) GET(path string, handle Handle) error {
-	return r.Handle("GET", path, handle)
+func (r *Router) GET(path string, handle Handle) {
+	r.Handle("GET", path, handle)
 }
 
 // POST is a shortcut for router.Handle("POST", path, handle)
-func (r *Router) POST(path string, handle Handle) error {
-	return r.Handle("POST", path, handle)
+func (r *Router) POST(path string, handle Handle) {
+	r.Handle("POST", path, handle)
 }
 
 // PUT is a shortcut for router.Handle("PUT", path, handle)
-func (r *Router) PUT(path string, handle Handle) error {
-	return r.Handle("PUT", path, handle)
+func (r *Router) PUT(path string, handle Handle) {
+	r.Handle("PUT", path, handle)
 }
 
 // DELETE is a shortcut for router.Handle("DELETE", path, handle)
-func (r *Router) DELETE(path string, handle Handle) error {
-	return r.Handle("DELETE", path, handle)
+func (r *Router) DELETE(path string, handle Handle) {
+	r.Handle("DELETE", path, handle)
 }
 
 // Handle registers a new request handle with the given path and method.
-func (r *Router) Handle(method, path string, handle Handle) error {
+func (r *Router) Handle(method, path string, handle Handle) {
 	if path[0] != '/' {
-		return errors.New("path must begin with '/'")
+		panic("path must begin with '/'")
 	}
-	return r.addRoute(method, path, handle)
+	r.addRoute(method, path, handle)
 }
 
 func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
