@@ -16,11 +16,11 @@ func min(a, b int) int {
 }
 
 var (
-	ErrDuplicatePath     = errors.New("A Hanlde is already registered for this method at this path")
-	ErrEmptyWildcardName = errors.New("Wildcards must be named with a non-empty name")
-	ErrCatchAllConflict  = errors.New("CatchAlls are only allowed at the end of the path")
-	ErrChildConflict     = errors.New("Can't insert a wildcard route because this path has existing children")
-	ErrWildCardConflict  = errors.New("Conflict with wildcard route")
+	ErrDuplicatePath     = errors.New("a Handle is already registered for this method at this path")
+	ErrEmptyWildcardName = errors.New("wildcards must be named with a non-empty name")
+	ErrCatchAllConflict  = errors.New("catchAlls are only allowed at the end of the path")
+	ErrChildConflict     = errors.New("can't insert a wildcard route because this path has existing children")
+	ErrWildCardConflict  = errors.New("conflict with wildcard route")
 )
 
 type node struct {

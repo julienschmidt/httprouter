@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be found
 // in the LICENSE file.
 
-// A radix tree based HTTP request router
+// Package httprouter is a radix tree based high performance HTTP request router
 package httprouter
 
 import (
@@ -88,7 +88,7 @@ func (r *Router) DELETE(path string, handle Handle) error {
 // Handle registers a new request handle with the given path and method.
 func (r *Router) Handle(method, path string, handle Handle) error {
 	if path[0] != '/' {
-		return errors.New("Path must begin with /")
+		return errors.New("path must begin with '/'")
 	}
 	return r.addRoute(method, path, handle)
 }
