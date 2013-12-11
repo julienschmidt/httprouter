@@ -93,14 +93,16 @@ func (r *Router) Handle(method, path string, handle Handle) error {
 	return r.addRoute(method, path, handle)
 }
 
+func (r *Router) recv(rw http.ResponseWriter, req *http.Request) {
+	if rcv := recover(); rcv != nil {
+		r.PanicHandler(rw, req, rcv)
+	}
+}
+
 // Make the router implement the http.Handler interface.
 func (r *Router) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if r.PanicHandler != nil {
-		defer func() {
-			if rcv := recover(); rcv != nil {
-				r.PanicHandler(rw, req, rcv)
-			}
-		}()
+		defer r.recv(rw, req)
 	}
 
 	path := req.URL.Path
