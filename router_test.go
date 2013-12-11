@@ -47,3 +47,31 @@ func TestRouter(t *testing.T) {
 		t.Fatal("routing failed")
 	}
 }
+
+func TestRouterPanicHandler(t *testing.T) {
+	router := New()
+	panicHandled := false
+
+	router.PanicHandler = func(rw http.ResponseWriter, r *http.Request, p interface{}) {
+		panicHandled = true
+	}
+
+	router.Handle("PUT", "/user/:name", func(_ http.ResponseWriter, _ *http.Request, _ map[string]string) {
+		panic("oops!")
+	})
+
+	w := new(mockResponseWriter)
+	req, _ := http.NewRequest("PUT", "/user/gopher", nil)
+
+	defer func() {
+		if rcv := recover(); rcv != nil {
+			t.Fatal("handling panic failed")
+		}
+	}()
+
+	router.ServeHTTP(w, req)
+
+	if !panicHandled {
+		t.Fatal("simulating failed")
+	}
+}
