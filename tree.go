@@ -16,7 +16,7 @@ func min(a, b int) int {
 }
 
 var (
-	ErrDuplicatePath     = errors.New("Duplicate Path")
+	ErrDuplicatePath     = errors.New("A Hanlde is already registered for this method at this path")
 	ErrEmptyWildcardName = errors.New("Wildcards must be named with a non-empty name")
 	ErrCatchAllConflict  = errors.New("CatchAlls are only allowed at the end of the path")
 	ErrChildConflict     = errors.New("Can't insert a wildcard route because this path has existing children")
@@ -25,56 +25,55 @@ var (
 
 type node struct {
 	// parent *node
-	key        string
+	path       string
 	indices    []byte
 	children   []*node
-	value      HandlerFunc
+	handle     map[string]Handle
 	wildChild  bool
 	isParam    bool
 	isCatchAll bool
 }
 
-// addRoute adds a leaf with the given value to the path determined by the given
-// key.
+// addRoute adds a leaf with the given handle to the path.
 // Attention! Not concurrency-safe!
-func (n *node) addRoute(key string, value HandlerFunc) error {
+func (n *node) addRoute(method, path string, handle Handle) error {
 	// non-empty tree
-	if len(n.key) != 0 {
+	if len(n.path) != 0 {
 	OUTER:
 		for {
-			// find longest common prefix
-			// this also implies that the commom prefix contains no ':' or '*'
-			// since the existing key can't contain this chars
+			// Find the longest common prefix.
+			// This also implies that the commom prefix contains no ':' or '*'
+			// since the existing key can't contain this chars.
 			i := 0
-			for j := min(len(key), len(n.key)); i < j && key[i] == n.key[i]; i++ {
+			for j := min(len(path), len(n.path)); i < j && path[i] == n.path[i]; i++ {
 			}
 
 			// Split edge
-			if i < len(n.key) {
+			if i < len(n.path) {
 				n.children = []*node{&node{
-					key:       n.key[i:],
+					path:      n.path[i:],
 					indices:   n.indices,
 					children:  n.children,
-					value:     n.value,
+					handle:    n.handle,
 					wildChild: n.wildChild,
 				}}
-				n.indices = []byte{n.key[i]}
-				n.key = key[:i]
-				n.value = nil
+				n.indices = []byte{n.path[i]}
+				n.path = path[:i]
+				n.handle = nil
 				n.wildChild = false
 			}
 
 			// Make new Node a child of this node
-			if i < len(key) {
-				key = key[i:]
+			if i < len(path) {
+				path = path[i:]
 
 				if n.wildChild {
 					n = n.children[0]
 
 					// Check if the wildcard matches
-					if len(key) >= len(n.key) && n.key == key[:len(n.key)] {
+					if len(path) >= len(n.path) && n.path == path[:len(n.path)] {
 						// check for longer wildcard, e.g. :name and :namex
-						if len(n.key) < len(key) && key[len(n.key)] != '/' {
+						if len(n.path) < len(path) && path[len(n.path)] != '/' {
 							return ErrWildCardConflict
 						}
 						continue OUTER
@@ -83,15 +82,15 @@ func (n *node) addRoute(key string, value HandlerFunc) error {
 					}
 				}
 
-				c := key[0]
+				c := path[0]
 
-				// TODO: remove / edit for variable delimiter
+				// TODO: allow variable delimiter
 				if n.isParam && c == '/' && len(n.children) == 1 {
 					n = n.children[0]
 					continue OUTER
 				}
 
-				// Check if a child with the next key byte exists
+				// Check if a child with the next path byte exists
 				for i, index := range n.indices {
 					if c == index {
 						n = n.children[i]
@@ -106,36 +105,42 @@ func (n *node) addRoute(key string, value HandlerFunc) error {
 
 					n = child
 				}
-				return n.insertRoute(key, value)
+				return n.insertChild(method, path, handle)
 
-			} else if i == len(key) { // Make node a (in-path) leaf
-				if n.value != nil {
-					return ErrDuplicatePath
+			} else if i == len(path) { // Make node a (in-path) leaf
+				if n.handle == nil {
+					n.handle = map[string]Handle{
+						method: handle,
+					}
+				} else {
+					if n.handle[method] != nil {
+						return ErrDuplicatePath
+					}
+					n.handle[method] = handle
 				}
-				n.value = value
 			}
 			return nil
 		}
 	} else { // Empty tree
-		return n.insertRoute(key, value)
+		return n.insertChild(method, path, handle)
 	}
 }
 
-func (n *node) insertRoute(key string, value HandlerFunc) error {
+func (n *node) insertChild(method, path string, handle Handle) error {
 	var offset int
 
 	// find prefix until first wildcard (beginning with ':'' or '*'')
-	for i, j := 0, len(key); i < j; i++ {
-		if b := key[i]; b == ':' || b == '*' {
+	for i, j := 0, len(path); i < j; i++ {
+		if b := path[i]; b == ':' || b == '*' {
 			// Check if this Node existing children which would be
 			// unreachable if we insert the wildcard here
 			if len(n.children) > 0 {
 				return ErrChildConflict
 			}
 
-			// find wildcard end (either '/'' or key end)
+			// find wildcard end (either '/'' or path end)
 			k := i + 1
-			for k < j && key[k] != '/' {
+			for k < j && path[k] != '/' {
 				k++
 			}
 
@@ -143,7 +148,7 @@ func (n *node) insertRoute(key string, value HandlerFunc) error {
 				return ErrEmptyWildcardName
 			}
 
-			if b == '*' && len(key) != k {
+			if b == '*' && len(path) != k {
 				return ErrCatchAllConflict
 			}
 
@@ -156,7 +161,7 @@ func (n *node) insertRoute(key string, value HandlerFunc) error {
 			}
 
 			if i > 0 {
-				n.key = key[offset:i]
+				n.path = path[offset:i]
 				offset = i
 			}
 
@@ -167,7 +172,7 @@ func (n *node) insertRoute(key string, value HandlerFunc) error {
 			// if the path doesn't end with the wildcard, then there will be
 			// another non-wildcard subpath starting with '/'
 			if k < j {
-				n.key = key[offset:k]
+				n.path = path[offset:k]
 				offset = k
 
 				child := &node{}
@@ -177,67 +182,71 @@ func (n *node) insertRoute(key string, value HandlerFunc) error {
 		}
 	}
 
-	// insert remaining key part and value to the leaf
-	n.key = key[offset:]
-	n.value = value
+	// insert remaining path part and handle to the leaf
+	n.path = path[offset:]
+	n.handle = map[string]Handle{
+		method: handle,
+	}
 
 	return nil
 }
 
-// Returns the handler registered with the given path (key). The values of
+// Returns the handle registered with the given path (key). The values of
 // wildcards are saved to a map.
-// If no handler can be found, a TSR (trailing slash redirect) recommendation is
-// made if a handler exists with an extra (without the) trailing slash for the
+// If no handle can be found, a TSR (trailing slash redirect) recommendation is
+// made if a handle exists with an extra (without the) trailing slash for the
 // given path.
-func (n *node) getValue(key string) (value HandlerFunc, vars map[string]string, tsr bool) {
+func (n *node) getValue(method, path string) (handle Handle, vars map[string]string, tsr bool) {
 	// Walk tree nodes
 OUTER:
-	for len(key) >= len(n.key) && key[:len(n.key)] == n.key {
-		key = key[len(n.key):]
+	for len(path) >= len(n.path) && path[:len(n.path)] == n.path {
+		path = path[len(n.path):]
 
-		if len(key) == 0 {
-			// Check if this node has a registered handler
-			if value = n.value; value != nil {
+		if len(path) == 0 {
+			// Check if this node has a handle registered for the given node
+			if handle = n.handle[method]; handle != nil {
 				return
 			}
 
-			// No handler found. Check if a handler for this path + a
+			// No handle found. Check if a handle for this path + a
 			// trailing slash exists for TSR recommendation
 			for i, index := range n.indices {
 				if index == '/' {
 					n = n.children[i]
-					tsr = (n.key == "/" && n.value != nil)
+					tsr = (n.path == "/" && n.handle[method] != nil)
 					return
 				}
 			}
+
+			// TODO: handle HTTP Error 405 - Method Not Allowed
+			// Return available methods
+
 			return
 
 		} else if n.wildChild == true {
 			n = n.children[0]
 
 			if n.isParam {
-				// find param end (either '/'' or key end)
+				// find param end (either '/'' or path end)
 				k := 0
-				l := len(key)
-				for k < l && key[k] != '/' {
+				l := len(path)
+				for k < l && path[k] != '/' {
 					k++
 				}
 
-				// save param value
+				// save param handle
 				if vars == nil {
-					//vars = new(Vars)
-					//vars.add(n.key[1:], key[:k])
 					vars = map[string]string{
-						n.key[1:]: key[:k],
+						n.path[1:]: path[:k],
 					}
 				} else {
-					vars[n.key[1:]] = key[:k]
+					vars[n.path[1:]] = path[:k]
 				}
 
 				// we need to go deeper!
 				if k < l {
 					if len(n.children) > 0 {
-						key = key[k:]
+						path = path[k:]
 						n = n.children[0]
 						continue
 					} else { // ... but we can't
@@ -246,32 +255,36 @@ OUTER:
 					}
 				}
 
-				if value = n.value; value != nil {
+				if handle = n.handle[method]; handle != nil {
 					return
 				} else if len(n.children) == 1 {
-					// No handler found. Check if a handler for this path + a
+					// No handle found. Check if a handle for this path + a
 					// trailing slash exists for TSR recommendation
 					n = n.children[0]
-					tsr = (n.key == "/" && n.value != nil)
+					tsr = (n.path == "/" && n.handle[method] != nil)
 				}
+
+				// TODO: handle HTTP Error 405 - Method Not Allowed
+				// Return available methods
+
 				return
 
 			} else { // catchAll
-				// save value
+				// save handle
 				if vars == nil {
 					vars = map[string]string{
-						n.key[1:]: key,
+						n.path[1:]: path,
 					}
 				} else {
-					vars[n.key[1:]] = key
+					vars[n.path[1:]] = path
 				}
 
-				value = n.value
+				handle = n.handle[method]
 				return
 			}
 
 		} else {
-			c := key[0]
+			c := path[0]
 
 			for i, index := range n.indices {
 				if c == index {
@@ -282,13 +295,13 @@ OUTER:
 
 			// Nothing found. We can recommend to redirect to the same URL without
 			// a trailing slash if a leaf exists for that path
-			tsr = (key == "/" && n.value != nil)
+			tsr = (path == "/" && n.handle[method] != nil)
 			return
 		}
 	}
 
 	// Nothing found. We can recommend to redirect to the same URL with an extra
 	// trailing slash if a leaf exists for that path
-	tsr = (n.value != nil && len(key)+1 == len(n.key) && n.key[len(key)] == '/') || (key == "/")
+	tsr = (n.handle != nil && len(path)+1 == len(n.path) && n.path[len(path)] == '/') || (path == "/")
 	return
 }

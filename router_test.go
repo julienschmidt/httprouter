@@ -30,7 +30,7 @@ func TestRouter(t *testing.T) {
 	router := New()
 
 	routed := false
-	router.Add("/user/:name", func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
+	router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
 		routed = true
 		want := map[string]string{"name": "gopher"}
 		if !reflect.DeepEqual(vars, want) {

@@ -12,8 +12,8 @@ import (
 )
 
 func printChildren(n *node, prefix string) {
-	fmt.Printf("%s%s[%d]  %v \r\n", prefix, n.key, len(n.children), n.value)
-	for l := len(n.key); l > 0; l-- {
+	fmt.Printf("%s%s[%d]  %v \r\n", prefix, n.path, len(n.children), n.handle)
+	for l := len(n.path); l > 0; l-- {
 		prefix += " "
 	}
 	for _, child := range n.children {
@@ -24,7 +24,7 @@ func printChildren(n *node, prefix string) {
 // Used as a workaround since we can't compare functions or their adresses
 var fakeHandlerValue string
 
-func fakeHandler(val string) HandlerFunc {
+func fakeHandler(val string) Handle {
 	return func(http.ResponseWriter, *http.Request, map[string]string) {
 		fakeHandlerValue = val
 	}
@@ -39,7 +39,7 @@ type testRequests []struct {
 
 func checkRequests(t *testing.T, tree *node, requests testRequests) {
 	for _, request := range requests {
-		handler, vars, _ := tree.getValue(request.path)
+		handler, vars, _ := tree.getValue("GET", request.path)
 
 		if handler == nil {
 			if !request.nilHandler {
@@ -75,7 +75,7 @@ func TestTreeAddAndGet(t *testing.T) {
 		"/doc/go1.html",
 	}
 	for _, route := range routes {
-		if err := tree.addRoute(route, fakeHandler(route)); err != nil {
+		if err := tree.addRoute("GET", route, fakeHandler(route)); err != nil {
 			t.Fatalf("Error inserting route '%s': %s", route, err.Error())
 		}
 	}
@@ -112,7 +112,7 @@ func TestTreeWildcard(t *testing.T) {
 		"/doc/go1.html",
 	}
 	for _, route := range routes {
-		if err := tree.addRoute(route, fakeHandler(route)); err != nil {
+		if err := tree.addRoute("GET", route, fakeHandler(route)); err != nil {
 			t.Fatalf("Error inserting route '%s': %s", route, err.Error())
 		}
 	}
@@ -154,7 +154,7 @@ func TestTreeWildcardConflict(t *testing.T) {
 		{"/id/:id", true},
 	}
 	for _, route := range routes {
-		err := tree.addRoute(route.path, nil)
+		err := tree.addRoute("GET", route.path, nil)
 		if err == ErrWildCardConflict {
 			if !route.conflict {
 				t.Errorf("Unexpected WildcardConflict for route '%s'", route.path)
@@ -188,7 +188,7 @@ func TestTreeChildConflict(t *testing.T) {
 		{"/*filepath", true},
 	}
 	for _, route := range routes {
-		err := tree.addRoute(route.path, nil)
+		err := tree.addRoute("GET", route.path, nil)
 		if err == ErrChildConflict {
 			if !route.conflict {
 				t.Errorf("Unexpected ErrCatchAllConflict for route '%s'", route.path)
@@ -214,12 +214,12 @@ func TestTreeDupliatePath(t *testing.T) {
 		"/user_:name",
 	}
 	for _, route := range routes {
-		if err := tree.addRoute(route, fakeHandler(route)); err != nil {
+		if err := tree.addRoute("GET", route, fakeHandler(route)); err != nil {
 			t.Fatalf("Error inserting route '%s': %s", route, err.Error())
 		}
 
 		// Add again
-		err := tree.addRoute(route, nil)
+		err := tree.addRoute("GET", route, nil)
 		if err == ErrDuplicatePath {
 			// everything is fine
 		} else if err != nil {
@@ -250,7 +250,7 @@ func TestEmptyWildcardName(t *testing.T) {
 		"/src/*",
 	}
 	for _, route := range routes {
-		if err := tree.addRoute(route, nil); err != ErrEmptyWildcardName {
+		if err := tree.addRoute("GET", route, nil); err != ErrEmptyWildcardName {
 			t.Errorf("Expected ErrEmptyWildcardName for route '%s', got: %v", route, err)
 		}
 	}
@@ -269,11 +269,11 @@ func TestTreeCatchAllConflict(t *testing.T) {
 	}
 	for _, route := range routes {
 		if route.conflict {
-			if err := tree.addRoute(route.path, nil); err != ErrCatchAllConflict {
+			if err := tree.addRoute("GET", route.path, nil); err != ErrCatchAllConflict {
 				t.Errorf("Expected ErrCatchAllConflict for route '%s', got: %v", route.path, err)
 			}
 		} else {
-			if err := tree.addRoute(route.path, nil); err != nil {
+			if err := tree.addRoute("GET", route.path, nil); err != nil {
 				t.Fatalf("Error inserting route '%s': %s", route.path, err.Error())
 			}
 		}
@@ -316,7 +316,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/no/b",
 	}
 	for _, route := range routes {
-		if err := tree.addRoute(route, fakeHandler(route)); err != nil {
+		if err := tree.addRoute("GET", route, fakeHandler(route)); err != nil {
 			t.Fatalf("Error inserting route '%s': %s", route, err.Error())
 		}
 	}
@@ -336,7 +336,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/doc/",
 	}
 	for _, route := range tsrRoutes {
-		handler, _, tsr := tree.getValue(route)
+		handler, _, tsr := tree.getValue("GET", route)
 		if handler != nil {
 			t.Fatalf("Non-nil handler for TSR route '%s", route)
 		} else if !tsr {
@@ -352,7 +352,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/_/",
 	}
 	for _, route := range noTsrRoutes {
-		handler, _, tsr := tree.getValue(route)
+		handler, _, tsr := tree.getValue("GET", route)
 		if handler != nil {
 			t.Fatalf("Non-nil handler for No-TSR route '%s", route)
 		} else if tsr {
