@@ -17,7 +17,8 @@ type Handle func(http.ResponseWriter, *http.Request, map[string]string)
 
 // NotFound is the default HTTP handler func for routes that can't be matched
 // with an existing route.
-// NotFound tries to redirect to a canonical URL generated with CleanPath
+// NotFound tries to redirect to a canonical URL generated with CleanPath.
+// Otherwise the request is delegated to http.NotFound.
 func NotFound(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "CONNECT" {
 		if p := CleanPath(req.URL.Path); p != req.URL.Path && p != req.Referer() {
@@ -36,8 +37,8 @@ type Router struct {
 
 	// Enables automatic redirection if the current route can't be matched but
 	// handler for the path with (without) the trailing slash exists.
-	// For example if a route for /foo exists but /foo/ is requested, the client
-	// would be redirected to /foo with http status code 301.
+	// For example if /foo/ is requested but a route only exists for /foo, the
+	// client is redirected to /foo with http status code 301.
 	RedirectTrailingSlash bool
 
 	// Configurable handler func which is used when no matching route is found.
@@ -109,7 +110,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if handle, vars, tsr := r.getValue(req.Method, path); handle != nil {
 		handle(w, req, vars)
-	} else if tsr && r.RedirectTrailingSlash {
+	} else if tsr && r.RedirectTrailingSlash && path != "/" {
 		if path[len(path)-1] == '/' {
 			http.Redirect(w, req, path[:len(path)-1], http.StatusMovedPermanently)
 			return

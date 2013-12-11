@@ -234,7 +234,7 @@ OUTER:
 					k++
 				}
 
-				// save param handle
+				// save param value
 				if vars == nil {
 					vars = map[string]string{
 						n.path[1:]: path[:k],
@@ -270,7 +270,7 @@ OUTER:
 				return
 
 			} else { // catchAll
-				// save handle
+				// save catchAll value
 				if vars == nil {
 					vars = map[string]string{
 						n.path[1:]: path,
@@ -302,6 +302,6 @@ OUTER:
 
 	// Nothing found. We can recommend to redirect to the same URL with an extra
 	// trailing slash if a leaf exists for that path
-	tsr = (n.handle != nil && len(path)+1 == len(n.path) && n.path[len(path)] == '/') || (path == "/")
+	tsr = (len(path)+1 == len(n.path) && n.path[len(path)] == '/' && n.handle[method] != nil) || (path == "/")
 	return
 }
