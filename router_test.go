@@ -34,7 +34,7 @@ func TestRouter(t *testing.T) {
 		routed = true
 		want := map[string]string{"name": "gopher"}
 		if !reflect.DeepEqual(vars, want) {
-			t.Fatalf("Wrong wildcard values: want %v, got %v", want, vars)
+			t.Fatalf("wrong wildcard values: want %v, got %v", want, vars)
 		}
 	})
 
@@ -44,6 +44,6 @@ func TestRouter(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if !routed {
-		t.Fatal("Routing failed")
+		t.Fatal("routing failed")
 	}
 }
