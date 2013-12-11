@@ -18,15 +18,15 @@ type Handle func(http.ResponseWriter, *http.Request, map[string]string)
 // NotFound is the default HTTP handler func for routes that can't be matched
 // with an existing route.
 // NotFound tries to redirect to a canonical URL generated with CleanPath
-func NotFound(rw http.ResponseWriter, req *http.Request) {
+func NotFound(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "CONNECT" {
 		if p := CleanPath(req.URL.Path); p != req.URL.Path && p != req.Referer() {
-			http.Redirect(rw, req, p, http.StatusMovedPermanently)
+			http.Redirect(w, req, p, http.StatusMovedPermanently)
 			return
 		}
 	}
 
-	http.NotFound(rw, req)
+	http.NotFound(w, req)
 }
 
 // Router is a http.Handler which can be used to dispatch requests to different
@@ -41,7 +41,7 @@ type Router struct {
 	RedirectTrailingSlash bool
 
 	// Configurable handler func which is used when no matching route is found.
-	// Default is the NotFound func of this package
+	// Default is the NotFound func of this package.
 	NotFound http.HandlerFunc
 
 	// Handler func to handle panics recovered from http handlers.
@@ -93,31 +93,31 @@ func (r *Router) Handle(method, path string, handle Handle) error {
 	return r.addRoute(method, path, handle)
 }
 
-func (r *Router) recv(rw http.ResponseWriter, req *http.Request) {
+func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 	if rcv := recover(); rcv != nil {
-		r.PanicHandler(rw, req, rcv)
+		r.PanicHandler(w, req, rcv)
 	}
 }
 
 // Make the router implement the http.Handler interface.
-func (r *Router) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.PanicHandler != nil {
-		defer r.recv(rw, req)
+		defer r.recv(w, req)
 	}
 
 	path := req.URL.Path
 
 	if handle, vars, tsr := r.getValue(req.Method, path); handle != nil {
-		handle(rw, req, vars)
+		handle(w, req, vars)
 	} else if tsr && r.RedirectTrailingSlash {
 		if path[len(path)-1] == '/' {
-			http.Redirect(rw, req, path[:len(path)-1], http.StatusMovedPermanently)
+			http.Redirect(w, req, path[:len(path)-1], http.StatusMovedPermanently)
 			return
 		} else {
-			http.Redirect(rw, req, path+"/", http.StatusMovedPermanently)
+			http.Redirect(w, req, path+"/", http.StatusMovedPermanently)
 			return
 		}
 	} else { // Handle 404
-		r.NotFound(rw, req)
+		r.NotFound(w, req)
 	}
 }
