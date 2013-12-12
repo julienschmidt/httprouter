@@ -129,6 +129,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, path, http.StatusMovedPermanently)
 		return
 	} else { // Handle 404
-		r.NotFound(w, req)
+		if r.NotFound != nil {
+			r.NotFound(w, req)
+		} else {
+			http.NotFound(w, req)
+		}
 	}
 }
