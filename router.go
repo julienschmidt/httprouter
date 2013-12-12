@@ -94,6 +94,16 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	r.addRoute(method, path, handle)
 }
 
+// HandlerFunc is an adapter which allows the usage of a http.HandlerFunc as a
+// request handle.
+func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
+	r.Handle(method, path,
+		func(w http.ResponseWriter, req *http.Request, _ map[string]string) {
+			handler(w, req)
+		},
+	)
+}
+
 func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 	if rcv := recover(); rcv != nil {
 		r.PanicHandler(w, req, rcv)
