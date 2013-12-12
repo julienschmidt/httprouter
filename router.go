@@ -3,6 +3,30 @@
 // in the LICENSE file.
 
 // Package httprouter is a trie based high performance HTTP request router
+//
+// A trivial example server is:
+//
+//  package main
+//
+//  import (
+//      "github.com/julienschmidt/httprouter"
+//      "io"
+//      "net/http"
+//      "log"
+//  )
+//
+//  func Hello(w http.ResponseWriter, req *http.Request, vars map[string]string) {
+//      io.WriteString(w, "hello, " + vars["name"] + "!\n")
+//  }
+//
+//  func main() {
+//      router := httprouter.New()
+//      router.GET("/hello/:name", Hello)
+//
+//      log.Fatal(http.ListenAndServe(":12345", router))
+//  }
+//
+//
 package httprouter
 
 import (
