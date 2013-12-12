@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be found
 // in the LICENSE file.
 
-// Package httprouter is a radix tree based high performance HTTP request router
+// Package httprouter is a trie based high performance HTTP request router
 package httprouter
 
 import (
@@ -20,8 +20,9 @@ type Handle func(http.ResponseWriter, *http.Request, map[string]string)
 // Otherwise the request is delegated to http.NotFound.
 func NotFound(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "CONNECT" {
-		if p := CleanPath(req.URL.Path); p != req.URL.Path && p != req.Referer() {
-			http.Redirect(w, req, p, http.StatusMovedPermanently)
+		path := req.URL.Path
+		if cp := CleanPath(path); cp != path && cp != req.Referer() {
+			http.Redirect(w, req, cp, http.StatusMovedPermanently)
 			return
 		}
 	}
@@ -111,12 +112,12 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		handle(w, req, vars)
 	} else if tsr && r.RedirectTrailingSlash && path != "/" {
 		if path[len(path)-1] == '/' {
-			http.Redirect(w, req, path[:len(path)-1], http.StatusMovedPermanently)
-			return
+			path = path[:len(path)-1]
 		} else {
-			http.Redirect(w, req, path+"/", http.StatusMovedPermanently)
-			return
+			path = path + "/"
 		}
+		http.Redirect(w, req, path, http.StatusMovedPermanently)
+		return
 	} else { // Handle 404
 		r.NotFound(w, req)
 	}
