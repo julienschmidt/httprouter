@@ -5,7 +5,8 @@
 
 package httprouter
 
-// CleanPath returns a canonical URL path for p, eliminating . and .. elements.
+// CleanPath is the URL version of path.Clean, it returns a canonical URL path
+// for p, eliminating . and .. elements.
 //
 // The following rules are applied iteratively until no further processing can
 // be done:
