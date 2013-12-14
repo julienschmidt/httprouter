@@ -31,6 +31,38 @@
 //      log.Fatal(http.ListenAndServe(":12345", router))
 //  }
 //
+// The router matches incoming requests by the request method and the path.
+// If a handle is registered for this path and method, the router delegates the
+// request to that function.
+// For the methods GET, POST, PUT and DELETE shortcut functions exist to
+// register handles, for all other methods router.Handle can be used.
+//
+// The registered path, against which the router matches incoming requests, can
+// contain two types of wildcards:
+//  Syntax    Type
+//  :name     Parameter
+//  *name     CatchAll
+// The value of wildcards is saved in a map as vars[name] = value. The map is
+// passed to the Handle as a parameter.
+//
+// Parameters are variable path segments. They match anything until the next /
+// or the path end:
+//  Path: /blog/:category/:post
+//
+//  Requests:
+//   /blog/go/request-routers            match: category="go"; post="request-routers"
+//   /blog/go/                           no match
+//   /blog/go/request-routers/comments   no match
+//
+// CatchAll wildcards match anything until the path end, including the They must therefore
+// always be the last element in the defined path.
+//  Path: /files/*filepath
+//
+//  Requests:
+//   /files/                             match: filepath="/"
+//   /files/LICENSE                      match: filepath="/LICENSE"
+//   /files/templates/article.html       match: filepath="/templates/article.html"
+//   /files                              no match, but the router would redirect
 //
 package httprouter
 
@@ -116,6 +148,13 @@ func (r *Router) DELETE(path string, handle Handle) {
 }
 
 // Handle registers a new request handle with the given path and method.
+//
+// For GET / POST / PUT or DELETE requests the respective shortcut functions can
+// be used.
+//
+// This function is intended to allow the usage of less frequently used,
+// non-standardized or custom methods (e.g. for internal communication with a
+// proxy).
 func (r *Router) Handle(method, path string, handle Handle) {
 	if path[0] != '/' {
 		panic("path must begin with '/'")
