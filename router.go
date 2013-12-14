@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be found
 // in the LICENSE file.
 
-// Package httprouter is a trie based high performance HTTP request router
+// Package httprouter is a trie based high performance HTTP request router.
 //
 // A trivial example server is:
 //
@@ -15,7 +15,7 @@
 //      "log"
 //  )
 //
-//  func Hello(w http.ResponseWriter, req *http.Request, vars map[string]string) {
+//  func Hello(w http.ResponseWriter, r *http.Request, vars map[string]string) {
 //      io.WriteString(w, "hello, " + vars["name"] + "!\n")
 //  }
 //
@@ -128,12 +128,17 @@ func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
 	)
 }
 
-// ServeFiles ... from root. The path must contain "*filepath", files are then
-// served from the local path /defined/root/dir/*filepath.
+// ServeFiles serves files from the given file system root.
+// The path must end with "/*filepath", files are then served from the local
+// path /defined/root/dir/*filepath.
 // For example if root is "/etc" and *filepath is "passwd", the local file
 // "/etc/passwd" would be served.
 // Internally a http.FileServer is used, therefore http.NotFound is used instead
 // of the Router's NotFound handler.
+// To use the operating system's file system implementation,
+// use http.Dir:
+//
+//     router.ServeFiles("/*filepath", http.Dir("/var/www")))
 func (r *Router) ServeFiles(path string, root http.FileSystem) {
 	if len(path) < 10 || path[len(path)-9:] != "*filepath" {
 		panic("path must end with *filepath")
@@ -146,8 +151,6 @@ func (r *Router) ServeFiles(path string, root http.FileSystem) {
 		if !ok {
 			panic("routed request has no *filepath")
 		}
-
-		println(fp)
 
 		req.URL.Path = fp
 		fileServer.ServeHTTP(w, req)
