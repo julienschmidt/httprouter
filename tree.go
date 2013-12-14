@@ -96,6 +96,10 @@ func (n *node) addRoute(method, path string, handle Handle) {
 				return
 
 			} else if i == len(path) { // Make node a (in-path) leaf
+				if n.wildChild && n.children[0].isCatchAll {
+					panic("conflict with catchAll route")
+				}
+
 				if n.handle == nil {
 					n.handle = map[string]Handle{
 						method: handle,
@@ -136,36 +140,64 @@ func (n *node) insertChild(method, path string, handle Handle) {
 				panic("wildcards must be named with a non-empty name")
 			}
 
-			if b == '*' && len(path) != k {
-				panic("catchAlls are only allowed at the end of the path")
-			}
+			if b == ':' { // param
+				// split path at the beginning of the wildcard
+				if i > 0 {
+					n.path = path[offset:i]
+					offset = i
+				}
 
-			// split path at the beginning of the wildcard
-			child := &node{}
-			if b == ':' {
-				child.isParam = true
-			} else {
-				child.isCatchAll = true
-			}
-
-			if i > 0 {
-				n.path = path[offset:i]
-				offset = i
-			}
-
-			n.children = []*node{child}
-			n.wildChild = true
-			n = child
-
-			// if the path doesn't end with the wildcard, then there will be
-			// another non-wildcard subpath starting with '/'
-			if k < j {
-				n.path = path[offset:k]
-				offset = k
-
-				child := &node{}
+				child := &node{
+					isParam: true,
+				}
 				n.children = []*node{child}
+				n.wildChild = true
 				n = child
+
+				// if the path doesn't end with the wildcard, then there will be
+				// another non-wildcard subpath starting with '/'
+				if k < j {
+					n.path = path[offset:k]
+					offset = k
+
+					child := &node{}
+					n.children = []*node{child}
+					n = child
+				}
+
+			} else { // catchAll
+				if len(path) != k {
+					panic("catchAlls are only allowed at the end of the path")
+				}
+
+				// currently fixed width 1 for '/'
+				i--
+				if path[i] != '/' {
+					panic("no / before catchAll")
+				}
+
+				n.path = path[offset:i]
+
+				// first node: catchAll node with empty path
+				child := &node{
+					isCatchAll: true,
+					wildChild:  true,
+				}
+				n.children = []*node{child}
+				n.indices = []byte{path[i]}
+				n = child
+
+				// second node: node holding the variable
+				child = &node{
+					path: path[i:],
+					handle: map[string]Handle{
+						method: handle,
+					},
+					isCatchAll: true,
+				}
+				n.children = []*node{child}
+
+				return
 			}
 		}
 	}
@@ -195,7 +227,7 @@ OUTER:
 			}
 
 			// No handle found. Check if a handle for this path + a
-			// trailing slash exists for TSR recommendation
+			// trailing slash exists for trailing slash recommendation
 			for i, index := range n.indices {
 				if index == '/' {
 					n = n.children[i]
@@ -209,14 +241,13 @@ OUTER:
 
 			return
 
-		} else if n.wildChild == true {
+		} else if n.wildChild {
 			n = n.children[0]
 
 			if n.isParam {
 				// find param end (either '/'' or path end)
 				k := 0
-				l := len(path)
-				for k < l && path[k] != '/' {
+				for k < len(path) && path[k] != '/' {
 					k++
 				}
 
@@ -230,13 +261,13 @@ OUTER:
 				}
 
 				// we need to go deeper!
-				if k < l {
+				if k < len(path) {
 					if len(n.children) > 0 {
 						path = path[k:]
 						n = n.children[0]
 						continue
 					} else { // ... but we can't
-						tsr = (l == k+1)
+						tsr = (len(path) == k+1)
 						return
 					}
 				}
@@ -259,10 +290,10 @@ OUTER:
 				// save catchAll value
 				if vars == nil {
 					vars = map[string]string{
-						n.path[1:]: path,
+						n.path[2:]: path,
 					}
 				} else {
-					vars[n.path[1:]] = path
+					vars[n.path[2:]] = path
 				}
 
 				handle = n.handle[method]
@@ -279,8 +310,8 @@ OUTER:
 				}
 			}
 
-			// Nothing found. We can recommend to redirect to the same URL without
-			// a trailing slash if a leaf exists for that path
+			// Nothing found. We can recommend to redirect to the same URL
+			// without a trailing slash if a leaf exists for that path
 			tsr = (path == "/" && n.handle[method] != nil)
 			return
 		}

@@ -12,7 +12,7 @@ import (
 )
 
 func printChildren(n *node, prefix string) {
-	fmt.Printf("%s%s[%d]  %v \r\n", prefix, n.path, len(n.children), n.handle)
+	fmt.Printf("%s%s[%d]  %v %t \r\n", prefix, n.path, len(n.children), n.handle, n.wildChild)
 	for l := len(n.path); l > 0; l-- {
 		prefix += " "
 	}
@@ -120,8 +120,8 @@ func TestTreeWildcard(t *testing.T) {
 		{"/cmd/test/", false, "/cmd/:tool/", map[string]string{"tool": "test"}},
 		{"/cmd/test", true, "", map[string]string{"tool": "test"}},
 		{"/cmd/test/3", false, "/cmd/:tool/:sub", map[string]string{"tool": "test", "sub": "3"}},
-		{"/src/", true, "", nil},
-		{"/src/some/file.png", false, "/src/*filepath", map[string]string{"filepath": "some/file.png"}},
+		{"/src/", false, "/src/*filepath", map[string]string{"filepath": "/"}},
+		{"/src/some/file.png", false, "/src/*filepath", map[string]string{"filepath": "/some/file.png"}},
 		{"/search/", false, "/search/", nil},
 		{"/search/someth!ng+in+ünìcodé", false, "/search/:query", map[string]string{"query": "someth!ng+in+ünìcodé"}},
 		{"/search/someth!ng+in+ünìcodé/", true, "", map[string]string{"query": "someth!ng+in+ünìcodé"}},
@@ -170,6 +170,9 @@ func TestTreeWildcardConflict(t *testing.T) {
 		{"/cmd/vet", true},
 		{"/src/*filepath", false},
 		{"/src/*filepathx", true},
+		{"/src/", true},
+		{"/src1/", false},
+		{"/src1/*filepath", true},
 		{"/search/:query", false},
 		{"/search/invalid", true},
 		{"/user_:name", false},
@@ -229,7 +232,7 @@ func TestTreeDupliatePath(t *testing.T) {
 	checkRequests(t, tree, testRequests{
 		{"/", false, "/", nil},
 		{"/doc/", false, "/doc/", nil},
-		{"/src/some/file.png", false, "/src/*filepath", map[string]string{"filepath": "some/file.png"}},
+		{"/src/some/file.png", false, "/src/*filepath", map[string]string{"filepath": "/some/file.png"}},
 		{"/search/someth!ng+in+ünìcodé", false, "/search/:query", map[string]string{"query": "someth!ng+in+ünìcodé"}},
 		{"/user_gopher", false, "/user_:name", map[string]string{"name": "gopher"}},
 	})
