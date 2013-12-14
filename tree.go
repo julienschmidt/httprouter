@@ -231,7 +231,8 @@ OUTER:
 			for i, index := range n.indices {
 				if index == '/' {
 					n = n.children[i]
-					tsr = (n.path == "/" && n.handle[method] != nil)
+					tsr = (n.path == "/" && n.handle[method] != nil) ||
+						(n.isCatchAll && n.children[0].handle[method] != nil)
 					return
 				}
 			}
