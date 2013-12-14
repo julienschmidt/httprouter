@@ -54,8 +54,9 @@
 //   /blog/go/                           no match
 //   /blog/go/request-routers/comments   no match
 //
-// CatchAll wildcards match anything until the path end, including the They must therefore
-// always be the last element in the defined path.
+// CatchAll wildcards match anything until the path end, including the directory
+// index (the / before the CatchAll). Since they match anything until the end,
+// CatchAll wildcards must always be the last element in the defined path.
 //  Path: /files/*filepath
 //
 //  Requests:
