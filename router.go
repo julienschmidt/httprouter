@@ -9,18 +9,23 @@
 //  package main
 //
 //  import (
+//      "fmt"
 //      "github.com/julienschmidt/httprouter"
-//      "io"
 //      "net/http"
 //      "log"
 //  )
 //
+//  func Index(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+//      fmt.Fprint(w, "Welcome!\n")
+//  }
+//
 //  func Hello(w http.ResponseWriter, r *http.Request, vars map[string]string) {
-//      io.WriteString(w, "hello, " + vars["name"] + "!\n")
+//      fmt.Fprintf(w, "hello, %s!\n", vars["name"])
 //  }
 //
 //  func main() {
 //      router := httprouter.New()
+//      router.GET("/", Index)
 //      router.GET("/hello/:name", Hello)
 //
 //      log.Fatal(http.ListenAndServe(":12345", router))
@@ -138,7 +143,7 @@ func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
 // To use the operating system's file system implementation,
 // use http.Dir:
 //
-//     router.ServeFiles("/*filepath", http.Dir("/var/www")))
+//     router.ServeFiles("/*filepath", http.Dir("/var/www"))
 func (r *Router) ServeFiles(path string, root http.FileSystem) {
 	if len(path) < 10 || path[len(path)-9:] != "*filepath" {
 		panic("path must end with *filepath")
