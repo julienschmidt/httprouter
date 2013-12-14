@@ -101,6 +101,16 @@ func TestRouterAPI(t *testing.T) {
 	}
 }
 
+func TestRouterRoot(t *testing.T) {
+	router := New()
+	recv := catchPanic(func() {
+		router.GET("noSlashRoot", nil)
+	})
+	if recv == nil {
+		t.Fatal("registering path not beginning with '/' did not panic")
+	}
+}
+
 func TestRouterPanicHandler(t *testing.T) {
 	router := New()
 	panicHandled := false
