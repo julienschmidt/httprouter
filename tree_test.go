@@ -105,6 +105,7 @@ func TestTreeWildcard(t *testing.T) {
 		"/search/:query",
 		"/user_:name",
 		"/user_:name/about",
+		"/files/:dir/*filepath",
 		"/doc/",
 		"/doc/go_faq.html",
 		"/doc/go1.html",
@@ -127,6 +128,7 @@ func TestTreeWildcard(t *testing.T) {
 		{"/search/someth!ng+in+ünìcodé/", true, "", map[string]string{"query": "someth!ng+in+ünìcodé"}},
 		{"/user_gopher", false, "/user_:name", map[string]string{"name": "gopher"}},
 		{"/user_gopher/about", false, "/user_:name/about", map[string]string{"name": "gopher"}},
+		{"/files/js/inc/framework.js", false, "/files/:dir/*filepath", map[string]string{"dir": "js", "filepath": "/inc/framework.js"}},
 	})
 }
 
@@ -173,6 +175,7 @@ func TestTreeWildcardConflict(t *testing.T) {
 		{"/src/", true},
 		{"/src1/", false},
 		{"/src1/*filepath", true},
+		{"/src2*filepath", true},
 		{"/search/:query", false},
 		{"/search/invalid", true},
 		{"/user_:name", false},
