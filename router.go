@@ -145,19 +145,14 @@ func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
 //
 //     router.ServeFiles("/*filepath", http.Dir("/var/www"))
 func (r *Router) ServeFiles(path string, root http.FileSystem) {
-	if len(path) < 10 || path[len(path)-9:] != "*filepath" {
-		panic("path must end with *filepath")
+	if len(path) < 10 || path[len(path)-10:] != "/*filepath" {
+		panic("path must end with /*filepath")
 	}
 
 	fileServer := http.FileServer(root)
 
 	r.GET(path, func(w http.ResponseWriter, req *http.Request, vars map[string]string) {
-		fp, ok := vars["filepath"]
-		if !ok {
-			panic("routed request has no *filepath")
-		}
-
-		req.URL.Path = fp
+		req.URL.Path = vars["filepath"]
 		fileServer.ServeHTTP(w, req)
 	})
 }
