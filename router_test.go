@@ -6,7 +6,9 @@ package httprouter
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 )
@@ -109,6 +111,36 @@ func TestRouterRoot(t *testing.T) {
 	})
 	if recv == nil {
 		t.Fatal("registering path not beginning with '/' did not panic")
+	}
+}
+
+func TestRouterNotFound(t *testing.T) {
+	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ map[string]string) {}
+
+	router := New()
+	router.GET("/path", handlerFunc)
+	router.GET("/dir/", handlerFunc)
+
+	testRoutes := []struct {
+		route   string
+		handler http.HandlerFunc
+		code    int
+		header  string
+	}{
+		{"/path/", NotFound, 301, "map[Location:[/path]]"},   // TSR -/
+		{"/dir", NotFound, 301, "map[Location:[/dir/]]"},     // TSR +/
+		{"/../path", NotFound, 301, "map[Location:[/path]]"}, // CleanPath
+		{"/nope", NotFound, 404, ""},                         // NotFound
+		{"/nope", nil, 404, ""},                              // NotFound
+	}
+	for _, tr := range testRoutes {
+		router.NotFound = tr.handler
+		r, _ := http.NewRequest("GET", tr.route, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, r)
+		if !(w.Code == tr.code && (w.Code == 404 || fmt.Sprint(w.Header()) == tr.header)) {
+			t.Errorf("NotFound handling route %s failed: Code=%d, Header=%v", tr.route, w.Code, w.Header())
+		}
 	}
 }
 
