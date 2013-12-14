@@ -128,6 +128,32 @@ func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
 	)
 }
 
+// ServeFiles ... from root. The path must contain "*filepath", files are then
+// served from the local path /defined/root/dir/*filepath.
+// For example if root is "/etc" and *filepath is "passwd", the local file
+// "/etc/passwd" would be served.
+// Internally a http.FileServer is used, therefore http.NotFound is used instead
+// of the Router's NotFound handler.
+func (r *Router) ServeFiles(path string, root http.FileSystem) {
+	if len(path) < 10 || path[len(path)-9:] != "*filepath" {
+		panic("path must end with *filepath")
+	}
+
+	fileServer := http.FileServer(root)
+
+	r.GET(path, func(w http.ResponseWriter, req *http.Request, vars map[string]string) {
+		fp, ok := vars["filepath"]
+		if !ok {
+			panic("routed request has no *filepath")
+		}
+
+		println(fp)
+
+		req.URL.Path = fp
+		fileServer.ServeHTTP(w, req)
+	})
+}
+
 func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 	if rcv := recover(); rcv != nil {
 		r.PanicHandler(w, req, rcv)
