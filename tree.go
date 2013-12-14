@@ -71,7 +71,6 @@ func (n *node) addRoute(method, path string, handle Handle) {
 
 				c := path[0]
 
-				// TODO: allow variable delimiter
 				if n.isParam && c == '/' && len(n.children) == 1 {
 					n = n.children[0]
 					continue OUTER
@@ -96,10 +95,6 @@ func (n *node) addRoute(method, path string, handle Handle) {
 				return
 
 			} else if i == len(path) { // Make node a (in-path) leaf
-				if n.wildChild && n.children[0].isCatchAll {
-					panic("conflict with catchAll route")
-				}
-
 				if n.handle == nil {
 					n.handle = map[string]Handle{
 						method: handle,
