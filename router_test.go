@@ -48,6 +48,59 @@ func TestRouter(t *testing.T) {
 	}
 }
 
+func TestRouterAPI(t *testing.T) {
+	var get, post, put, delete, handlerFunc bool
+
+	router := New()
+	router.GET("/GET", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+		get = true
+	})
+	router.POST("/POST", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+		post = true
+	})
+	router.PUT("/PUT", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+		put = true
+	})
+	router.DELETE("/DELETE", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+		delete = true
+	})
+	router.HandlerFunc("GET", "/HandlerFunc", func(w http.ResponseWriter, r *http.Request) {
+		handlerFunc = true
+	})
+
+	w := new(mockResponseWriter)
+
+	r, _ := http.NewRequest("GET", "/GET", nil)
+	router.ServeHTTP(w, r)
+	if !get {
+		t.Error("routing GET failed")
+	}
+
+	r, _ = http.NewRequest("POST", "/POST", nil)
+	router.ServeHTTP(w, r)
+	if !post {
+		t.Error("routing POST failed")
+	}
+
+	r, _ = http.NewRequest("PUT", "/PUT", nil)
+	router.ServeHTTP(w, r)
+	if !put {
+		t.Error("routing PUT failed")
+	}
+
+	r, _ = http.NewRequest("DELETE", "/DELETE", nil)
+	router.ServeHTTP(w, r)
+	if !delete {
+		t.Error("routing DELETE failed")
+	}
+
+	r, _ = http.NewRequest("GET", "/HandlerFunc", nil)
+	router.ServeHTTP(w, r)
+	if !handlerFunc {
+		t.Error("routing HandlerFunc failed")
+	}
+}
+
 func TestRouterPanicHandler(t *testing.T) {
 	router := New()
 	panicHandled := false
