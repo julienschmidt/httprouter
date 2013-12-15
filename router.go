@@ -34,7 +34,7 @@
 // The router matches incoming requests by the request method and the path.
 // If a handle is registered for this path and method, the router delegates the
 // request to that function.
-// For the methods GET, POST, PUT and DELETE shortcut functions exist to
+// For the methods GET, POST, PUT, PATCH and DELETE shortcut functions exist to
 // register handles, for all other methods router.Handle can be used.
 //
 // The registered path, against which the router matches incoming requests, can
@@ -144,6 +144,11 @@ func (r *Router) PUT(path string, handle Handle) {
 	r.Handle("PUT", path, handle)
 }
 
+// PATCH is a shortcut for router.Handle("PATCH", path, handle)
+func (r *Router) PATCH(path string, handle Handle) {
+	r.Handle("PATCH", path, handle)
+}
+
 // DELETE is a shortcut for router.Handle("DELETE", path, handle)
 func (r *Router) DELETE(path string, handle Handle) {
 	r.Handle("DELETE", path, handle)
@@ -151,8 +156,8 @@ func (r *Router) DELETE(path string, handle Handle) {
 
 // Handle registers a new request handle with the given path and method.
 //
-// For GET, POST, PUT and DELETE requests the respective shortcut functions can
-// be used.
+// For GET, POST, PUT, PATCH and DELETE requests the respective shortcut
+// functions can be used.
 //
 // This function is intended to allow the usage of less frequently used,
 // non-standardized or custom methods (e.g. for internal communication with a

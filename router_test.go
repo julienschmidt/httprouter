@@ -52,7 +52,7 @@ func TestRouter(t *testing.T) {
 }
 
 func TestRouterAPI(t *testing.T) {
-	var get, post, put, delete, handlerFunc bool
+	var get, post, put, patch, delete, handlerFunc bool
 
 	router := New()
 	router.GET("/GET", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
@@ -63,6 +63,9 @@ func TestRouterAPI(t *testing.T) {
 	})
 	router.PUT("/PUT", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 		put = true
+	})
+	router.PATCH("/PATCH", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+		patch = true
 	})
 	router.DELETE("/DELETE", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 		delete = true
@@ -89,6 +92,12 @@ func TestRouterAPI(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !put {
 		t.Error("routing PUT failed")
+	}
+
+	r, _ = http.NewRequest("PATCH", "/PATCH", nil)
+	router.ServeHTTP(w, r)
+	if !patch {
+		t.Error("routing PATCH failed")
 	}
 
 	r, _ = http.NewRequest("DELETE", "/DELETE", nil)
