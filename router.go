@@ -4,7 +4,7 @@
 
 // Package httprouter is a trie based high performance HTTP request router.
 //
-// A trivial example server is:
+// A trivial example is:
 //
 //  package main
 //
@@ -42,20 +42,21 @@
 //  Syntax    Type
 //  :name     Parameter
 //  *name     CatchAll
-// The value of wildcards is saved in a map as vars[name] = value. The map is
-// passed to the Handle as a parameter.
+// The value of wildcards is saved in a map as vars["name"] = value. The map is
+// passed to the Handle func as a parameter.
 //
-// Parameters are variable path segments. They match anything until the next /
+// Parameters are variable path segments. They match anything until the next '/'
 // or the path end:
 //  Path: /blog/:category/:post
 //
 //  Requests:
-//   /blog/go/request-routers            match: category="go"; post="request-routers"
+//   /blog/go/request-routers            match: category="go", post="request-routers"
+//   /blog/go/request-routers/           no match, but the router would redirect
 //   /blog/go/                           no match
 //   /blog/go/request-routers/comments   no match
 //
 // CatchAll wildcards match anything until the path end, including the directory
-// index (the / before the CatchAll). Since they match anything until the end,
+// index (the '/'' before the CatchAll). Since they match anything until the end,
 // CatchAll wildcards must always be the last element in the defined path.
 //  Path: /files/*filepath
 //
@@ -72,8 +73,8 @@ import (
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
-// requests. Like http.HandlerFunc, but has a third parameter for the route
-// parameters.
+// requests. Like http.HandlerFunc, but has a third parameter for the values of
+// wildcards (variables).
 type Handle func(http.ResponseWriter, *http.Request, map[string]string)
 
 // NotFound is the default HTTP handler func for routes that can't be matched
@@ -150,7 +151,7 @@ func (r *Router) DELETE(path string, handle Handle) {
 
 // Handle registers a new request handle with the given path and method.
 //
-// For GET / POST / PUT or DELETE requests the respective shortcut functions can
+// For GET, POST, PUT and DELETE requests the respective shortcut functions can
 // be used.
 //
 // This function is intended to allow the usage of less frequently used,
