@@ -57,7 +57,7 @@
 //
 // CatchAll wildcards match anything until the path end, including the directory
 // index (the '/'' before the CatchAll). Since they match anything until the end,
-// CatchAll wildcards must always be the last element in the defined path.
+// CatchAll wildcards must always be the final path element.
 //  Path: /files/*filepath
 //
 //  Requests:
@@ -159,9 +159,9 @@ func (r *Router) DELETE(path string, handle Handle) {
 // For GET, POST, PUT, PATCH and DELETE requests the respective shortcut
 // functions can be used.
 //
-// This function is intended to allow the usage of less frequently used,
-// non-standardized or custom methods (e.g. for internal communication with a
-// proxy).
+// This function is intended for bulk loading and to allow the usage of less
+// frequently used, non-standardized or custom methods (e.g. for internal
+// communication with a proxy).
 func (r *Router) Handle(method, path string, handle Handle) {
 	if path[0] != '/' {
 		panic("path must begin with '/'")
