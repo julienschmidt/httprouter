@@ -23,6 +23,8 @@ A compressing dynamic trie (radix tree) structure is used for efficient matching
 Of course you can also set a custom NotFound handler and serve files.
 
 ## Usage
+This is you a quick introduction, view the [GoDoc](http://godoc.org/github.com/julienschmidt/httprouter) for details.
+
 Let's start with a trivial example:
 ```go
 package main
@@ -55,22 +57,33 @@ func main() {
 As you can see, `:name` is a *named parameter*.
 The values are passed in map, therefore the value of `:name` is available in `vars["name"]`.
 
-Named parameters only match a single path segment.
-If we had the pattern `/user/:user`, only requests with a URL path like `/user/gordon` or
-`/user/you` would be matched by this pattern, not `/user/gordon/profile` or `/user/`.
+Named parameters only match a single path segment:
+```
+Pattern: /user/:user
+
+ /user/gordon              match
+ /user/you                 match
+ /user/gordon/profile      no match
+ /user/                    no match
+```
 
 **Note:** Since this router has only explicit matches, you can not register static routes and paramters for the same path segment. For example you can not register the patterns `/user/new` and `/user/:user` at the same time.
 
 ### Catch-All routes
 The second type are *catch-all* routes and have the form `*name`. Like the name suggest, they match everything.
-Therefore they must always be at the **end** of the pattern.
+Therefore they must always be at the **end** of the pattern:
+```
+Pattern: /src/*filepath
 
-The pattern `/src/*filepath` would match `/src/`, `/src/somefile.go`, `/src/subdir/somefile.go` and so on.
+ /src/                     match
+ /src/somefile.go          match
+ /src/subdir/somefile.go   match
+```
 
 ## Where can I find Middleware *X*?
 This package just provides a very efficient request router with a few extra features. The router is just a [http.Handler](http://golang.org/pkg/net/http/#Handler), you can chain any http.Handler compatible middleware before the router, for example the [Gorilla handlers](http://www.gorillatoolkit.org/pkg/handlers). Or you could [just write your own](http://justinas.org/writing-http-middleware-in-go/), it's very easy!
 
-Here is a quick example: Does your servere serve multiple domains / hosts?
+Here is a quick example: Does your server serve multiple domains / hosts?
 Define a router per host!
 ```go
 type HostSwitch map[string]http.Handler
