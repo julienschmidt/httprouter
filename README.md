@@ -83,7 +83,7 @@ Pattern: /src/*filepath
 ## Where can I find Middleware *X*?
 This package just provides a very efficient request router with a few extra features. The router is just a [http.Handler](http://golang.org/pkg/net/http/#Handler), you can chain any http.Handler compatible middleware before the router, for example the [Gorilla handlers](http://www.gorillatoolkit.org/pkg/handlers). Or you could [just write your own](http://justinas.org/writing-http-middleware-in-go/), it's very easy!
 
-Here is a quick example: Does your server serve multiple domains / hosts?
+Here is a quick example: Does your server serve multiple domains / hosts? You want to use subdomains?
 Define a router per host!
 ```go
 type HostSwitch map[string]http.Handler
