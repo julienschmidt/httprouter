@@ -23,7 +23,7 @@ A compressing dynamic trie (radix tree) structure is used for efficient matching
 Of course you can also set a custom NotFound handler and serve files.
 
 ## Usage
-This is you a quick introduction, view the [GoDoc](http://godoc.org/github.com/julienschmidt/httprouter) for details.
+This is just a quick introduction, view the [GoDoc](http://godoc.org/github.com/julienschmidt/httprouter) for details.
 
 Let's start with a trivial example:
 ```go
