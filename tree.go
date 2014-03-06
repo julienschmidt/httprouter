@@ -26,11 +26,32 @@ type node struct {
 	wildChild bool
 	nType     nodeType
 	handle    map[string]Handle
+	priority  uint32
+}
+
+// increments priority of the given child and reorders if necessary
+func (n *node) incrementChildPrio(i int) int {
+	n.children[i].priority++
+	prio := n.children[i].priority
+	// adjust position (move to front)
+	for j := i - 1; j >= 0 && n.children[j].priority < prio; j-- {
+		// swap node positions
+		tmpN := n.children[j]
+		n.children[j] = n.children[i]
+		n.children[i] = tmpN
+		tmpI := n.indices[j]
+		n.indices[j] = n.indices[i]
+		n.indices[i] = tmpI
+
+		i--
+	}
+	return i
 }
 
 // addRoute adds a node with the given handle to the path.
 // Not concurrency-safe!
 func (n *node) addRoute(method, path string, handle Handle) {
+	n.priority++
 	// non-empty tree
 	if len(n.path) != 0 {
 	OUTER:
@@ -50,6 +71,7 @@ func (n *node) addRoute(method, path string, handle Handle) {
 					children:  n.children,
 					handle:    n.handle,
 					wildChild: n.wildChild,
+					priority:  n.priority - 1,
 				}}
 				n.indices = []byte{n.path[i]}
 				n.path = path[:i]
@@ -64,6 +86,7 @@ func (n *node) addRoute(method, path string, handle Handle) {
 				// catchAll
 				if n.wildChild {
 					n = n.children[0]
+					n.priority++
 
 					// Check if the wildcard matches
 					if len(path) >= len(n.path) && n.path == path[:len(n.path)] {
@@ -81,12 +104,14 @@ func (n *node) addRoute(method, path string, handle Handle) {
 				// param
 				if n.nType == param && c == '/' && len(n.children) == 1 {
 					n = n.children[0]
+					n.priority++
 					continue OUTER
 				}
 
 				// Check if a child with the next path byte exists
 				for i, index := range n.indices {
 					if c == index {
+						i = n.incrementChildPrio(i)
 						n = n.children[i]
 						continue OUTER
 					}
@@ -98,6 +123,7 @@ func (n *node) addRoute(method, path string, handle Handle) {
 					child := &node{}
 					n.children = append(n.children, child)
 
+					n.incrementChildPrio(len(n.indices) - 1)
 					n = child
 				}
 				n.insertChild(method, path, handle)
@@ -157,6 +183,7 @@ func (n *node) insertChild(method, path string, handle Handle) {
 				n.children = []*node{child}
 				n.wildChild = true
 				n = child
+				n.priority++
 
 				// if the path doesn't end with the wildcard, then there will be
 				// another non-wildcard subpath starting with '/'
@@ -167,6 +194,7 @@ func (n *node) insertChild(method, path string, handle Handle) {
 					child := &node{}
 					n.children = []*node{child}
 					n = child
+					n.priority++
 				}
 
 			} else { // catchAll
@@ -190,6 +218,7 @@ func (n *node) insertChild(method, path string, handle Handle) {
 				n.children = []*node{child}
 				n.indices = []byte{path[i]}
 				n = child
+				n.priority++
 
 				// second node: node holding the variable
 				child = &node{
@@ -197,7 +226,8 @@ func (n *node) insertChild(method, path string, handle Handle) {
 					handle: map[string]Handle{
 						method: handle,
 					},
-					nType: catchAll,
+					nType:    catchAll,
+					priority: 1,
 				}
 				n.children = []*node{child}
 

@@ -12,7 +12,7 @@ import (
 )
 
 func printChildren(n *node, prefix string) {
-	fmt.Printf("%s%s[%d]  %v %t \r\n", prefix, n.path, len(n.children), n.handle, n.wildChild)
+	fmt.Printf(" %02d %s%s[%d] %v %t \r\n", n.priority, prefix, n.path, len(n.children), n.handle, n.wildChild)
 	for l := len(n.path); l > 0; l-- {
 		prefix += " "
 	}
@@ -60,6 +60,23 @@ func checkRequests(t *testing.T, tree *node, requests testRequests) {
 	}
 }
 
+func checkPriorities(t *testing.T, n *node) uint32 {
+	var prio uint32
+	for i := range n.children {
+		prio += checkPriorities(t, n.children[i])
+	}
+	prio += uint32(len(n.handle))
+
+	if n.priority != prio {
+		t.Errorf(
+			"priority mismatch for node '%s': is %d, should be %d",
+			n.path, n.priority, prio,
+		)
+	}
+
+	return prio
+}
+
 func TestTreeAddAndGet(t *testing.T) {
 	tree := &node{}
 
@@ -91,6 +108,8 @@ func TestTreeAddAndGet(t *testing.T) {
 		{"/no", true, "", nil},   // no matching child
 		{"/ab", false, "/ab", nil},
 	})
+
+	checkPriorities(t, tree)
 }
 
 func TestTreeWildcard(t *testing.T) {
@@ -130,6 +149,8 @@ func TestTreeWildcard(t *testing.T) {
 		{"/user_gopher/about", false, "/user_:name/about", map[string]string{"name": "gopher"}},
 		{"/files/js/inc/framework.js", false, "/files/:dir/*filepath", map[string]string{"dir": "js", "filepath": "/inc/framework.js"}},
 	})
+
+	checkPriorities(t, tree)
 }
 
 func catchPanic(testFunc func()) (recv interface{}) {
