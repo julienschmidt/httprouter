@@ -82,6 +82,45 @@ Pattern: /src/*filepath
  /src/subdir/somefile.go   match
 ```
 
+## How does it work?
+The router relies on a tree structure which makes heavy use of *common prefixes*, it is basically a *compact* [*prefix tree*](http://en.wikipedia.org/wiki/Trie) (or just [*Radix tree*](http://en.wikipedia.org/wiki/Radix_tree)). Nodes with a common prefix also share a common parent. Here is a short example what the routing tree could look like:
+
+```
+Priority   Path             Handles
+9          \                map[GET:<1>]
+3          ├s               map[]
+2          |├earch\         map[GET:<2>, POST:<3>,]
+1          |└upport\        map[GET:<4>]
+2          ├blog\           map[GET:<5>]
+1          |    └:post      map[]
+1          |         └\     map[GET:<6>]
+2          ├about-us\       map[GET:<7>]
+1          |        └team\  map[GET:<8>]
+1          └contact\        map[GET:<9>]
+```
+Every `<num>` represents the memory address of a handler function. If you follow a path trough the tree from the root to the leaf, you get the complete route path, e.g `\search\`, for which a GET- and a POST-handler function are registered.
+
+Since URL pathes have a hierarchical structure and make use only of a limited set of characters, it is very likely that there are a lot of common prefixes. This allows us to easiely reduce the routing into ever smaller problems.
+
+Unlike hash-maps, a tree structure also allows us to use dynamic parts, e.g. the `:post` above, which is just a placeholder for a post name, since we actually match against the routing patterns instead of just comparing hashes. [As benchmarks show](https://github.com/julienschmidt/go-http-routing-benchmark), hash-map based routers also don't scale very well.
+
+For even better scalability, the child nodes on each tree level are ordered by priority, where the priority is just the number of handles registered in sub nodes (children, grandchildren, and so on..).
+This helps in two ways:
+
+1. Nodes which are part of the most routing pathes are evaluated first. This helps to make as much routes as possible to be reachable as fast as possible.
+2. It is some sort of cost compensation. The longest reachable path (highest cost) can always be evaluated first. The follwing scheme visualizes the tree structure. Nodes are evaluated from top to bottom and from left to right.
+
+
+```
+├------------
+├---------
+├-----
+├----
+├--
+├--
+└-
+```
+
 ## Where can I find Middleware *X*?
 This package just provides a very efficient request router with a few extra features. The router is just a [http.Handler](http://golang.org/pkg/net/http/#Handler), you can chain any http.Handler compatible middleware before the router, for example the [Gorilla handlers](http://www.gorillatoolkit.org/pkg/handlers). Or you could [just write your own](http://justinas.org/writing-http-middleware-in-go/), it's very easy!
 
