@@ -33,6 +33,7 @@ type node struct {
 func (n *node) incrementChildPrio(i int) int {
 	n.children[i].priority++
 	prio := n.children[i].priority
+
 	// adjust position (move to front)
 	for j := i - 1; j >= 0 && n.children[j].priority < prio; j-- {
 		// swap node positions
@@ -83,7 +84,6 @@ func (n *node) addRoute(method, path string, handle Handle) {
 			if i < len(path) {
 				path = path[i:]
 
-				// catchAll
 				if n.wildChild {
 					n = n.children[0]
 					n.priority++
