@@ -129,24 +129,34 @@ This package just provides a very efficient request router with a few extra feat
 Here is a quick example: Does your server serve multiple domains / hosts? You want to use subdomains?
 Define a router per host!
 ```go
+// We need an object that implements the http.Handler interface.
+// Therefore we need a type for which we implement the ServeHTTP method.
+// We just use a map here, in which we map host names to http.Handlers
 type HostSwitch map[string]http.Handler
 
+// Implement the ServerHTTP method on our new type
 func (hs HostSwitch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Check if a http.Handler is registered for the given host.
+	// If yes, use it to handle the request.
 	if handler := hs[r.URL.Host]; handler != nil {
 		handler.ServeHTTP(w, r)
 	}
 
+	// Handle host names for wich no handler is registered
 	http.Error(w, "Forbidden", 403) // Or Redirect?
 }
 
 func main() {
+	// Initialze a router as usual 
     router := httprouter.New()
     router.GET("/", Index)
     router.GET("/hello/:name", Hello)
 
+    // Make a new HostSwitch and insert the router for example.com
     hs := make(HostSwitch)
-	hs["example.com"] = router
+    hs["example.com"] = router
 
+    // Use the HostSwitch to listen and serve on port 12345
     log.Fatal(http.ListenAndServe(":12345", hs))
 }
 ```
