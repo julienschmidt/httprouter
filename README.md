@@ -12,7 +12,7 @@ It scales well even with very long pathes and a large number of routes.
 A compressing dynamic trie (radix tree) structure is used for efficient matching.
 
 ## Features
-**Zero Garbage:** The matching and dispatching process generates zero bytes of garbage. In fact, the only heap allocations that are made, is by building the map containing the variables key-value pairs. If the request path contains no variables, not a single heap allocation is necessary.
+**Zero Garbage:** The matching and dispatching process generates zero bytes of garbage. In fact, the only heap allocations that are made, is by building the map containing the key-value pairs for variables. If the request path contains no variables, not a single heap allocation is necessary.
 
 **Best Performance:** [Benchmarks speak for themselves](https://github.com/julienschmidt/go-http-routing-benchmark). See below for technical details of the implementation.
 
