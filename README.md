@@ -22,7 +22,7 @@ A compressing dynamic trie (radix tree) structure is used for efficient matching
 
 **Stop caring about trailing slashes:** Choose the URL style you like, the router automatically redirects the client if a trailing slash is missing or if there is one extra. Of course it only does so, if the new path has a handler. If you don't like it, you can turn off this behavior.
 
-**No more server crashes:** You can set a PanicHandler to deal with panics. The router then recovers and lets the PanicHandler log what happened and deliver a nice error page.
+**No more server crashes:** You can set a PanicHandler to deal with panics occouring during handling a HTTP request. The router then recovers and lets the PanicHandler log what happened and deliver a nice error page.
 
 Of course you can also set a custom NotFound handler and serve files.
 
