@@ -59,7 +59,7 @@ func main() {
 
 ### Named parameters
 As you can see, `:name` is a *named parameter*.
-The values are passed in map, therefore the value of `:name` is available in `vars["name"]`.
+The values are passed in a map, therefore the value of `:name` is available in `vars["name"]`.
 
 Named parameters only match a single path segment:
 ```
