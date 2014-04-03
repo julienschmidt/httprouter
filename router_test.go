@@ -52,11 +52,14 @@ func TestRouter(t *testing.T) {
 }
 
 func TestRouterAPI(t *testing.T) {
-	var get, post, put, patch, delete, handlerFunc bool
+	var get, head, post, put, patch, delete, handlerFunc bool
 
 	router := New()
 	router.GET("/GET", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 		get = true
+	})
+	router.HEAD("/GET", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+		head = true
 	})
 	router.POST("/POST", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 		post = true
@@ -80,6 +83,12 @@ func TestRouterAPI(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !get {
 		t.Error("routing GET failed")
+	}
+
+	r, _ = http.NewRequest("HEAD", "/GET", nil)
+	router.ServeHTTP(w, r)
+	if !head {
+		t.Error("routing HEAD failed")
 	}
 
 	r, _ = http.NewRequest("POST", "/POST", nil)

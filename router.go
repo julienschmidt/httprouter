@@ -134,6 +134,11 @@ func (r *Router) GET(path string, handle Handle) {
 	r.Handle("GET", path, handle)
 }
 
+// HEAD is a shortcut for router.Handle("HEAD", path, handle)
+func (r *Router) HEAD(path string, handle Handle) {
+	r.Handle("HEAD", path, handle)
+}
+
 // POST is a shortcut for router.Handle("POST", path, handle)
 func (r *Router) POST(path string, handle Handle) {
 	r.Handle("POST", path, handle)
