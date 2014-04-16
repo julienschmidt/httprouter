@@ -290,6 +290,80 @@ func TestTreeCatchAllConflict(t *testing.T) {
 	testRoutes(t, routes)
 }
 
+func TestTreeMultipleHandlers(t *testing.T) {
+	tree := &node{}
+
+	methods := [...]string{
+		"GET",
+		"PUT",
+		"POST",
+		"DELETE",
+		"PATCH",
+	}
+
+	routes := [...]string{
+		"/",
+		"/dir1",
+		"/dir2/:param",
+		"/dir2",
+		"/dir3/*catchAll",
+		"/d",
+	}
+
+	for _, route := range routes {
+		for _, method := range methods {
+			recv := catchPanic(func() {
+				tree.addRoute(method, route, nil)
+			})
+			if recv != nil {
+				t.Fatalf("panic while inserting multiple handlers (method %s) for route '%s", method, route)
+			}
+		}
+	}
+}
+
+func TestTreeMultipleHandlersParamRoot(t *testing.T) {
+	tree := &node{}
+
+	methods := [...]string{
+		"GET",
+		"PUT",
+		"POST",
+		"DELETE",
+		"PATCH",
+	}
+
+	for _, method := range methods {
+		recv := catchPanic(func() {
+			tree.addRoute(method, "/:param", nil)
+		})
+		if recv != nil {
+			t.Fatalf("panic while inserting multiple handlers (method %s) for route /:param", method)
+		}
+	}
+}
+
+func TestTreeMultipleHandlersCatchAllRoot(t *testing.T) {
+	tree := &node{}
+
+	methods := [...]string{
+		"GET",
+		"PUT",
+		"POST",
+		"DELETE",
+		"PATCH",
+	}
+
+	for _, method := range methods {
+		recv := catchPanic(func() {
+			tree.addRoute(method, "/*catchAll", nil)
+		})
+		if recv != nil {
+			t.Fatalf("panic while inserting multiple handlers (method %s) for route /*catchAll", method)
+		}
+	}
+}
+
 /*func TestTreeDuplicateWildcard(t *testing.T) {
 	tree := &node{}
 

@@ -54,7 +54,7 @@ func (n *node) incrementChildPrio(i int) int {
 func (n *node) addRoute(method, path string, handle Handle) {
 	n.priority++
 	// non-empty tree
-	if len(n.path) != 0 {
+	if len(n.path) > 0 || len(n.children) > 0 {
 	OUTER:
 		for {
 			// Find the longest common prefix.
