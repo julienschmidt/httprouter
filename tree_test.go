@@ -12,7 +12,7 @@ import (
 )
 
 func printChildren(n *node, prefix string) {
-	fmt.Printf(" %02d %s%s[%d] %v %t \r\n", n.priority, prefix, n.path, len(n.children), n.handle, n.wildChild)
+	fmt.Printf(" %02d %s%s[%d] %v %t %d \r\n", n.priority, prefix, n.path, len(n.children), n.handle, n.wildChild, n.nType)
 	for l := len(n.path); l > 0; l-- {
 		prefix += " "
 	}
@@ -286,6 +286,14 @@ func TestTreeCatchAllConflict(t *testing.T) {
 		{"/src/*filepath/x", true},
 		{"/src2/", false},
 		{"/src2/*filepath/x", true},
+	}
+	testRoutes(t, routes)
+}
+
+func TestTreeCatchAllConflictRoot(t *testing.T) {
+	routes := []testRoute{
+		{"/", false},
+		{"/*filepath", true},
 	}
 	testRoutes(t, routes)
 }

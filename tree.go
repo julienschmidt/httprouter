@@ -153,7 +153,7 @@ func (n *node) insertChild(method, path string, handle Handle) {
 
 	// find prefix until first wildcard (beginning with ':'' or '*'')
 	for i, j := 0, len(path); i < j; i++ {
-		if b := path[i]; b == ':' || b == '*' {
+		if c := path[i]; c == ':' || c == '*' {
 			// Check if this Node existing children which would be
 			// unreachable if we insert the wildcard here
 			if len(n.children) > 0 {
@@ -170,7 +170,7 @@ func (n *node) insertChild(method, path string, handle Handle) {
 				panic("wildcards must be named with a non-empty name")
 			}
 
-			if b == ':' { // param
+			if c == ':' { // param
 				// split path at the beginning of the wildcard
 				if i > 0 {
 					n.path = path[offset:i]
@@ -199,13 +199,17 @@ func (n *node) insertChild(method, path string, handle Handle) {
 
 			} else { // catchAll
 				if len(path) != k {
-					panic("catchAlls are only allowed at the end of the path")
+					panic("catch-all routes are only allowed at the end of the path")
+				}
+
+				if len(n.path) > 0 && n.path[len(n.path)-1] == '/' {
+					panic("catch-all conflicts with existing handle for the path segment root")
 				}
 
 				// currently fixed width 1 for '/'
 				i--
 				if path[i] != '/' {
-					panic("no / before catchAll")
+					panic("no / before catch-all")
 				}
 
 				n.path = path[offset:i]
