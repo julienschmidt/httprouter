@@ -226,6 +226,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if handle, vars, tsr := r.getValue(req.Method, path); handle != nil {
 		handle(w, req, vars)
+		return
 	} else if tsr && r.RedirectTrailingSlash && path != "/" {
 		if path[len(path)-1] == '/' {
 			path = path[:len(path)-1]
