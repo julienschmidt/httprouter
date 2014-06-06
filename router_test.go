@@ -138,6 +138,10 @@ func TestRouterNotFound(t *testing.T) {
 	}{
 		{"/path/", NotFound, 301, "map[Location:[/path]]"},   // TSR -/
 		{"/dir", NotFound, 301, "map[Location:[/dir/]]"},     // TSR +/
+		{"/PATH", NotFound, 301, "map[Location:[/path]]"},    // Fixed Case
+		{"/DIR/", NotFound, 301, "map[Location:[/dir/]]"},    // Fixed Case
+		{"/PATH/", NotFound, 301, "map[Location:[/path]]"},   // Fixed Case -/
+		{"/DIR", NotFound, 301, "map[Location:[/dir/]]"},     // Fixed Case +/
 		{"/../path", NotFound, 301, "map[Location:[/path]]"}, // CleanPath
 		{"/nope", NotFound, 404, ""},                         // NotFound
 		{"/nope", nil, 404, ""},                              // NotFound

@@ -457,3 +457,134 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		}
 	}
 }
+
+func TestTreeFindCaseInsensitivePath(t *testing.T) {
+	tree := &node{}
+
+	routes := [...]string{
+		"/hi",
+		"/b/",
+		"/ABC/",
+		"/search/:query",
+		"/cmd/:tool/",
+		"/src/*filepath",
+		"/x",
+		"/x/y",
+		"/y/",
+		"/y/z",
+		"/0/:id",
+		"/0/:id/1",
+		"/1/:id/",
+		"/1/:id/2",
+		"/aa",
+		"/a/",
+		"/doc",
+		"/doc/go_faq.html",
+		"/doc/go1.html",
+		"/doc/go/away",
+		"/no/a",
+		"/no/b",
+	}
+
+	for _, route := range routes {
+		recv := catchPanic(func() {
+			tree.addRoute("GET", route, fakeHandler(route))
+		})
+		if recv != nil {
+			t.Fatalf("panic inserting route '%s': %v", route, recv)
+		}
+	}
+
+	// Check out == in for all registered routes
+	// With fixTrailingSlash = true
+	for _, route := range routes {
+		out, found := tree.findCaseInsensitivePath("GET", route, true)
+		if !found {
+			t.Errorf("Route '%s' not found!", route)
+		} else if string(out) != route {
+			t.Errorf("Wrong result for route '%s': %s", route, string(out))
+		}
+	}
+	// With fixTrailingSlash = false
+	for _, route := range routes {
+		out, found := tree.findCaseInsensitivePath("GET", route, false)
+		if !found {
+			t.Errorf("Route '%s' not found!", route)
+		} else if string(out) != route {
+			t.Errorf("Wrong result for route '%s': %s", route, string(out))
+		}
+	}
+
+	tests := []struct {
+		in    string
+		out   string
+		found bool
+		slash bool
+	}{
+		{"/HI", "/hi", true, false},
+		{"/HI/", "/hi", true, true},
+		{"/B", "/b/", true, true},
+		{"/B/", "/b/", true, false},
+		{"/abc", "/ABC/", true, true},
+		{"/abc/", "/ABC/", true, false},
+		{"/aBc", "/ABC/", true, true},
+		{"/aBc/", "/ABC/", true, false},
+		{"/abC", "/ABC/", true, true},
+		{"/abC/", "/ABC/", true, false},
+		{"/SEARCH/QUERY", "/search/QUERY", true, false},
+		{"/SEARCH/QUERY/", "/search/QUERY", true, true},
+		{"/CMD/TOOL/", "/cmd/TOOL/", true, false},
+		{"/CMD/TOOL", "/cmd/TOOL/", true, true},
+		{"/SRC/FILE/PATH", "/src/FILE/PATH", true, false},
+		{"/x/Y", "/x/y", true, false},
+		{"/x/Y/", "/x/y", true, true},
+		{"/X/y", "/x/y", true, false},
+		{"/X/y/", "/x/y", true, true},
+		{"/X/Y", "/x/y", true, false},
+		{"/X/Y/", "/x/y", true, true},
+		{"/Y/", "/y/", true, false},
+		{"/Y", "/y/", true, true},
+		{"/Y/z", "/y/z", true, false},
+		{"/Y/z/", "/y/z", true, true},
+		{"/Y/Z", "/y/z", true, false},
+		{"/Y/Z/", "/y/z", true, true},
+		{"/y/Z", "/y/z", true, false},
+		{"/y/Z/", "/y/z", true, true},
+		{"/Aa", "/aa", true, false},
+		{"/Aa/", "/aa", true, true},
+		{"/AA", "/aa", true, false},
+		{"/AA/", "/aa", true, true},
+		{"/aA", "/aa", true, false},
+		{"/aA/", "/aa", true, true},
+		{"/A/", "/a/", true, false},
+		{"/A", "/a/", true, true},
+		{"/DOC", "/doc", true, false},
+		{"/DOC/", "/doc", true, true},
+		{"/NO", "", false, true},
+		{"/DOC/GO", "", false, true},
+	}
+	// With fixTrailingSlash = true
+	for _, test := range tests {
+		out, found := tree.findCaseInsensitivePath("GET", test.in, true)
+		if found != test.found || (found && (string(out) != test.out)) {
+			t.Errorf("Wrong result for '%s': got %s, %t; want %s, %t",
+				test.in, string(out), found, test.out, test.found)
+			return
+		}
+	}
+	// With fixTrailingSlash = false
+	for _, test := range tests {
+		out, found := tree.findCaseInsensitivePath("GET", test.in, false)
+		if test.slash {
+			if found { // test needs a trailingSlash fix. It must not be found!
+				t.Errorf("Found without fixTrailingSlash: %s; got %s", test.in, string(out))
+			}
+		} else {
+			if found != test.found || (found && (string(out) != test.out)) {
+				t.Errorf("Wrong result for '%s': got %s, %t; want %s, %t",
+					test.in, string(out), found, test.out, test.found)
+				return
+			}
+		}
+	}
+}

@@ -96,13 +96,20 @@ func NotFound(w http.ResponseWriter, req *http.Request) {
 // Router is a http.Handler which can be used to dispatch requests to different
 // handler functions via configurable routes
 type Router struct {
-	node
+	node // embed the root node
 
-	// Enables automatic redirection if the current route can't be matched but
+	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
 	// For example if /foo/ is requested but a route only exists for /foo, the
 	// client is redirected to /foo with http status code 301.
 	RedirectTrailingSlash bool
+
+	// Enables automatic redirection if the current route can't be matched but a
+	// case-insensitive lookup of the path finds a handler.
+	// The router then permanent redirects (http status code 301) to the
+	// corrected path.
+	// For example /FOO and /Foo could be redirected to /foo.
+	RedirectCaseInsensitive bool
 
 	// Configurable handler func which is used when no matching route is found.
 	// Default is the NotFound func of this package.
@@ -124,8 +131,9 @@ var _ http.Handler = New()
 // requested Host.
 func New() *Router {
 	return &Router{
-		RedirectTrailingSlash: true,
-		NotFound:              NotFound,
+		RedirectTrailingSlash:   true,
+		RedirectCaseInsensitive: true,
+		NotFound:                NotFound,
 	}
 }
 
@@ -226,11 +234,18 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		http.Redirect(w, req, path, http.StatusMovedPermanently)
 		return
-	} else { // Handle 404
-		if r.NotFound != nil {
-			r.NotFound(w, req)
-		} else {
-			http.NotFound(w, req)
+	} else if r.RedirectCaseInsensitive {
+		fixedPath, found := r.findCaseInsensitivePath(req.Method, path, r.RedirectTrailingSlash)
+		if found {
+			http.Redirect(w, req, string(fixedPath), http.StatusMovedPermanently)
+			return
 		}
+	}
+
+	// Handle 404
+	if r.NotFound != nil {
+		r.NotFound(w, req)
+	} else {
+		http.NotFound(w, req)
 	}
 }
