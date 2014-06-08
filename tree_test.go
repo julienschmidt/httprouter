@@ -78,6 +78,28 @@ func checkPriorities(t *testing.T, n *node) uint32 {
 	return prio
 }
 
+func checkMaxParams(t *testing.T, n *node) uint8 {
+	var maxParams uint8
+	for i := range n.children {
+		params := checkMaxParams(t, n.children[i])
+		if params > maxParams {
+			maxParams = params
+		}
+	}
+	if n.nType != static && !n.wildChild {
+		maxParams++
+	}
+
+	if n.maxParams != maxParams {
+		t.Errorf(
+			"maxParams mismatch for node '%s': is %d, should be %d",
+			n.path, n.maxParams, maxParams,
+		)
+	}
+
+	return maxParams
+}
+
 func TestCountParams(t *testing.T) {
 	if countParams("/path/:param1/static/*catch-all") != 2 {
 		t.Fail()
@@ -120,6 +142,7 @@ func TestTreeAddAndGet(t *testing.T) {
 	})
 
 	checkPriorities(t, tree)
+	checkMaxParams(t, tree)
 }
 
 func TestTreeWildcard(t *testing.T) {
@@ -165,6 +188,7 @@ func TestTreeWildcard(t *testing.T) {
 	})
 
 	checkPriorities(t, tree)
+	checkMaxParams(t, tree)
 }
 
 func catchPanic(testFunc func()) (recv interface{}) {

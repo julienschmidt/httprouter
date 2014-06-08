@@ -88,20 +88,28 @@ func (n *node) addRoute(method, path string, handle Handle) {
 			// This also implies that the commom prefix contains no ':' or '*'
 			// since the existing key can't contain this chars.
 			i := 0
-			for j := min(len(path), len(n.path)); i < j && path[i] == n.path[i]; i++ {
+			for max := min(len(path), len(n.path)); i < max && path[i] == n.path[i]; i++ {
 			}
 
 			// Split edge
 			if i < len(n.path) {
-				n.children = []*node{&node{
+				child := node{
 					path:      n.path[i:],
 					wildChild: n.wildChild,
-					maxParams: n.maxParams,
 					indices:   n.indices,
 					children:  n.children,
 					handle:    n.handle,
 					priority:  n.priority - 1,
-				}}
+				}
+
+				// Update maxParams (max of all children)
+				for i := range child.children {
+					if child.children[i].maxParams > child.maxParams {
+						child.maxParams = child.children[i].maxParams
+					}
+				}
+
+				n.children = []*node{&child}
 				n.indices = []byte{n.path[i]}
 				n.path = path[:i]
 				n.handle = nil
