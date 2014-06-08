@@ -19,6 +19,7 @@ package httprouter
 //
 // If the result of this process is an empty string, "/" is returned
 func CleanPath(p string) string {
+	// Turn empty string into "/"
 	if p == "" {
 		return "/"
 	}
@@ -100,11 +101,6 @@ func CleanPath(p string) string {
 	if trailing && w > 1 {
 		bufApp(&buf, p, w, '/')
 		w++
-	}
-
-	// Turn empty string into "/"
-	if w == 0 {
-		return "/"
 	}
 
 	if buf == nil {
