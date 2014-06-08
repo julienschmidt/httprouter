@@ -118,7 +118,7 @@ func NotFound(w http.ResponseWriter, req *http.Request) {
 // Router is a http.Handler which can be used to dispatch requests to different
 // handler functions via configurable routes
 type Router struct {
-	node // embed the root node
+	trees map[string]*node
 
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
@@ -196,7 +196,18 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	if path[0] != '/' {
 		panic("path must begin with '/'")
 	}
-	r.addRoute(method, path, handle)
+
+	if r.trees == nil {
+		r.trees = make(map[string]*node)
+	}
+
+	root := r.trees[method]
+	if root == nil {
+		root = new(node)
+		r.trees[method] = root
+	}
+
+	root.addRoute(path, handle)
 }
 
 // HandlerFunc is an adapter which allows the usage of a http.HandlerFunc as a
@@ -244,24 +255,26 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer r.recv(w, req)
 	}
 
-	path := req.URL.Path
+	if root := r.trees[req.Method]; root != nil {
+		path := req.URL.Path
 
-	if handle, ps, tsr := r.getValue(req.Method, path); handle != nil {
-		handle(w, req, ps)
-		return
-	} else if tsr && r.RedirectTrailingSlash && path != "/" {
-		if path[len(path)-1] == '/' {
-			path = path[:len(path)-1]
-		} else {
-			path = path + "/"
-		}
-		http.Redirect(w, req, path, http.StatusMovedPermanently)
-		return
-	} else if r.RedirectCaseInsensitive {
-		fixedPath, found := r.findCaseInsensitivePath(req.Method, path, r.RedirectTrailingSlash)
-		if found {
-			http.Redirect(w, req, string(fixedPath), http.StatusMovedPermanently)
+		if handle, ps, tsr := root.getValue(path); handle != nil {
+			handle(w, req, ps)
 			return
+		} else if tsr && r.RedirectTrailingSlash && path != "/" {
+			if path[len(path)-1] == '/' {
+				path = path[:len(path)-1]
+			} else {
+				path = path + "/"
+			}
+			http.Redirect(w, req, path, http.StatusMovedPermanently)
+			return
+		} else if r.RedirectCaseInsensitive {
+			fixedPath, found := root.findCaseInsensitivePath(path, r.RedirectTrailingSlash)
+			if found {
+				http.Redirect(w, req, string(fixedPath), http.StatusMovedPermanently)
+				return
+			}
 		}
 	}
 
