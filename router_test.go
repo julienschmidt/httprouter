@@ -67,8 +67,18 @@ func TestRouter(t *testing.T) {
 	}
 }
 
+type handlerStruct struct {
+	handeled *bool
+}
+
+func (h handlerStruct) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	*h.handeled = true
+}
+
 func TestRouterAPI(t *testing.T) {
-	var get, post, put, patch, delete, handlerFunc bool
+	var get, post, put, patch, delete, handler, handlerFunc bool
+
+	httpHandler := handlerStruct{&handler}
 
 	router := New()
 	router.GET("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
@@ -86,6 +96,7 @@ func TestRouterAPI(t *testing.T) {
 	router.DELETE("/DELETE", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		delete = true
 	})
+	router.Handler("GET", "/Handler", httpHandler)
 	router.HandlerFunc("GET", "/HandlerFunc", func(w http.ResponseWriter, r *http.Request) {
 		handlerFunc = true
 	})
@@ -120,6 +131,12 @@ func TestRouterAPI(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !delete {
 		t.Error("routing DELETE failed")
+	}
+
+	r, _ = http.NewRequest("GET", "/Handler", nil)
+	router.ServeHTTP(w, r)
+	if !handler {
+		t.Error("routing Handler failed")
 	}
 
 	r, _ = http.NewRequest("GET", "/HandlerFunc", nil)
