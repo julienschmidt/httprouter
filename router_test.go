@@ -147,23 +147,20 @@ func TestRouterNotFound(t *testing.T) {
 	router.GET("/dir/", handlerFunc)
 
 	testRoutes := []struct {
-		route   string
-		handler http.HandlerFunc
-		code    int
-		header  string
+		route  string
+		code   int
+		header string
 	}{
-		{"/path/", NotFound, 301, "map[Location:[/path]]"},   // TSR -/
-		{"/dir", NotFound, 301, "map[Location:[/dir/]]"},     // TSR +/
-		{"/PATH", NotFound, 301, "map[Location:[/path]]"},    // Fixed Case
-		{"/DIR/", NotFound, 301, "map[Location:[/dir/]]"},    // Fixed Case
-		{"/PATH/", NotFound, 301, "map[Location:[/path]]"},   // Fixed Case -/
-		{"/DIR", NotFound, 301, "map[Location:[/dir/]]"},     // Fixed Case +/
-		{"/../path", NotFound, 301, "map[Location:[/path]]"}, // CleanPath
-		{"/nope", NotFound, 404, ""},                         // NotFound
-		{"/nope", nil, 404, ""},                              // NotFound
+		{"/path/", 301, "map[Location:[/path]]"},   // TSR -/
+		{"/dir", 301, "map[Location:[/dir/]]"},     // TSR +/
+		{"/PATH", 301, "map[Location:[/path]]"},    // Fixed Case
+		{"/DIR/", 301, "map[Location:[/dir/]]"},    // Fixed Case
+		{"/PATH/", 301, "map[Location:[/path]]"},   // Fixed Case -/
+		{"/DIR", 301, "map[Location:[/dir/]]"},     // Fixed Case +/
+		{"/../path", 301, "map[Location:[/path]]"}, // CleanPath
+		{"/nope", 404, ""},                         // NotFound
 	}
 	for _, tr := range testRoutes {
-		router.NotFound = tr.handler
 		r, _ := http.NewRequest("GET", tr.route, nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, r)

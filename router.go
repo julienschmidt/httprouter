@@ -99,22 +99,6 @@ func (ps Params) ByName(name string) string {
 	return ""
 }
 
-// NotFound is the default HTTP handler func for routes that can't be matched
-// with an existing route.
-// NotFound tries to redirect to a canonical URL generated with CleanPath.
-// Otherwise the request is delegated to http.NotFound.
-func NotFound(w http.ResponseWriter, req *http.Request) {
-	if req.Method != "CONNECT" {
-		path := req.URL.Path
-		if cp := CleanPath(path); cp != path && cp != req.Referer() {
-			http.Redirect(w, req, cp, http.StatusMovedPermanently)
-			return
-		}
-	}
-
-	http.NotFound(w, req)
-}
-
 // Router is a http.Handler which can be used to dispatch requests to different
 // handler functions via configurable routes
 type Router struct {
@@ -126,15 +110,19 @@ type Router struct {
 	// client is redirected to /foo with http status code 301.
 	RedirectTrailingSlash bool
 
-	// Enables automatic redirection if the current route can't be matched but a
-	// case-insensitive lookup of the path finds a handler.
-	// The router then permanent redirects (http status code 301) to the
-	// corrected path.
-	// For example /FOO and /Foo could be redirected to /foo.
-	RedirectCaseInsensitive bool
+	// If enabled, the router tries to fix the current request path, if no
+	// handle is registered for it.
+	// First superfluous path elements like `../` or `//` are removed.
+	// Afterwards the router does a case-insensitive lookup of the cleaned path.
+	// If a handle can be found for this route, the router makes a  redirection
+	// to the corrected path with status code 301 for GET requests and 307 for
+	// all other request methods.
+	// For example /FOO and /..//Foo could be redirected to /foo.
+	// RedirectTrailingSlash is independet of this option.
+	RedirectFixedPath bool
 
 	// Configurable handler func which is used when no matching route is found.
-	// Default is the NotFound func of this package.
+	// If not set, http.NotFound is used.
 	NotFound http.HandlerFunc
 
 	// Handler func to handle panics recovered from http handlers.
@@ -153,9 +141,8 @@ var _ http.Handler = New()
 // requested Host.
 func New() *Router {
 	return &Router{
-		RedirectTrailingSlash:   true,
-		RedirectCaseInsensitive: true,
-		NotFound:                NotFound,
+		RedirectTrailingSlash: true,
+		RedirectFixedPath:     true,
 	}
 }
 
@@ -261,19 +248,35 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if handle, ps, tsr := root.getValue(path); handle != nil {
 			handle(w, req, ps)
 			return
-		} else if tsr && r.RedirectTrailingSlash && path != "/" {
-			if path[len(path)-1] == '/' {
-				path = path[:len(path)-1]
-			} else {
-				path = path + "/"
+		} else if req.Method != "CONNECT" {
+			code := 301 // Permanent redirect, request with GET method
+			if req.Method != "GET" {
+				// Temporary redirect, request with same method
+				// As of Go 1.3, Go does not support status code 308.
+				code = 307
 			}
-			http.Redirect(w, req, path, http.StatusMovedPermanently)
-			return
-		} else if r.RedirectCaseInsensitive {
-			fixedPath, found := root.findCaseInsensitivePath(path, r.RedirectTrailingSlash)
-			if found {
-				http.Redirect(w, req, string(fixedPath), http.StatusMovedPermanently)
+
+			if tsr && r.RedirectTrailingSlash && path != "/" {
+				if path[len(path)-1] == '/' {
+					req.URL.Path = path[:len(path)-1]
+				} else {
+					req.URL.Path = path + "/"
+				}
+				http.Redirect(w, req, req.URL.String(), code)
 				return
+			}
+
+			// Try to fix the request path
+			if r.RedirectFixedPath {
+				fixedPath, found := root.findCaseInsensitivePath(
+					CleanPath(path),
+					r.RedirectTrailingSlash,
+				)
+				if found {
+					req.URL.Path = string(fixedPath)
+					http.Redirect(w, req, req.URL.String(), code)
+					return
+				}
 			}
 		}
 	}
