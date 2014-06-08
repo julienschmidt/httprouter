@@ -40,12 +40,12 @@ import (
     "log"
 )
 
-func Index(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
     fmt.Fprint(w, "Welcome!\n")
 }
 
-func Hello(w http.ResponseWriter, r *http.Request, vars map[string]string) {
-    fmt.Fprintf(w, "hello, %s!\n", vars["name"])
+func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+    fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
 }
 
 func main() {
@@ -59,7 +59,9 @@ func main() {
 
 ### Named parameters
 As you can see, `:name` is a *named parameter*.
-The values are passed in a map, therefore the value of `:name` is available in `vars["name"]`.
+The values are accessible via `httprouter.Params`, which is just a slice of `httprouter.Param`s.
+You can get the value of a parameter either by its index in the slice, or by using the `ByName(name)` method:
+`:name` can be retrived by `ByName("name")`.
 
 Named parameters only match a single path segment:
 ```
