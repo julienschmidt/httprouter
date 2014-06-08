@@ -168,6 +168,28 @@ func TestRouterNotFound(t *testing.T) {
 			t.Errorf("NotFound handling route %s failed: Code=%d, Header=%v", tr.route, w.Code, w.Header())
 		}
 	}
+
+	// Test custom not found handler
+	var notFound bool
+	router.NotFound = func(rw http.ResponseWriter, r *http.Request) {
+		rw.WriteHeader(404)
+		notFound = true
+	}
+	r, _ := http.NewRequest("GET", "/nope", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == 404 && notFound == true) {
+		t.Errorf("Custom NotFound handler failed: Code=%d, Header=%v", w.Code, w.Header())
+	}
+
+	// Test other method than GET (want 307 instead of 301)
+	router.PATCH("/path", handlerFunc)
+	r, _ = http.NewRequest("PATCH", "/path/", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == 307 && fmt.Sprint(w.Header()) == "map[Location:[/path]]") {
+		t.Errorf("Custom NotFound handler failed: Code=%d, Header=%v", w.Code, w.Header())
+	}
 }
 
 func TestRouterPanicHandler(t *testing.T) {
