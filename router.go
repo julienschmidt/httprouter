@@ -28,7 +28,7 @@
 //      router.GET("/", Index)
 //      router.GET("/hello/:name", Hello)
 //
-//      log.Fatal(http.ListenAndServe(":12345", router))
+//      log.Fatal(http.ListenAndServe(":8080", router))
 //  }
 //
 // The router matches incoming requests by the request method and the path.
@@ -38,15 +38,13 @@
 // register handles, for all other methods router.Handle can be used.
 //
 // The registered path, against which the router matches incoming requests, can
-// contain two types of wildcards:
+// contain two types of parameters:
 //  Syntax    Type
-//  :name     Parameter
-//  *name     CatchAll
-// The value of wildcards is saved in a map as vars["name"] = value. The map is
-// passed to the Handle func as a parameter.
+//  :name     named parameter
+//  *name     catch-all parameter
 //
-// Parameters are variable path segments. They match anything until the next '/'
-// or the path end:
+// Named parameters are dynamic path segments. They match anything until the
+// next '/' or the path end:
 //  Path: /blog/:category/:post
 //
 //  Requests:
@@ -55,9 +53,9 @@
 //   /blog/go/                           no match
 //   /blog/go/request-routers/comments   no match
 //
-// CatchAll wildcards match anything until the path end, including the directory
-// index (the '/'' before the CatchAll). Since they match anything until the end,
-// CatchAll wildcards must always be the final path element.
+// Catch-all parameters match anything until the path end, including the
+// directory index (the '/' before the catch-all). Since they match anything
+// until the end, catch-all paramerters must always be the final path element.
 //  Path: /files/*filepath
 //
 //  Requests:
@@ -66,6 +64,16 @@
 //   /files/templates/article.html       match: filepath="/templates/article.html"
 //   /files                              no match, but the router would redirect
 //
+// The value of parameters is saved as a slice of the Param struct, consisting
+// each of a key and a value. The slice is passed to the Handle func as a third
+// parameter.
+// There are two ways to retrieve the value of a parameter:
+//  // by the name of the parameter
+//  user := ps.ByName("user") // defined by :user or *user
+//
+//  // by the index of the parameter. This way you can also get the name (key)
+//  thirdKey   := ps[2].Key   // the name of the 3rd parameter
+//  thirdValue := ps[2].Value // the value of the 3rd parameter
 package httprouter
 
 import (
@@ -107,27 +115,28 @@ type Router struct {
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
 	// For example if /foo/ is requested but a route only exists for /foo, the
-	// client is redirected to /foo with http status code 301.
+	// client is redirected to /foo with http status code 301 for GET requests
+	// and 307 for all other request methods.
 	RedirectTrailingSlash bool
 
 	// If enabled, the router tries to fix the current request path, if no
 	// handle is registered for it.
-	// First superfluous path elements like `../` or `//` are removed.
+	// First superfluous path elements like ../ or // are removed.
 	// Afterwards the router does a case-insensitive lookup of the cleaned path.
 	// If a handle can be found for this route, the router makes a  redirection
 	// to the corrected path with status code 301 for GET requests and 307 for
 	// all other request methods.
 	// For example /FOO and /..//Foo could be redirected to /foo.
-	// RedirectTrailingSlash is independet of this option.
+	// RedirectTrailingSlash is independent of this option.
 	RedirectFixedPath bool
 
-	// Configurable handler func which is used when no matching route is found.
-	// If not set, http.NotFound is used.
+	// Configurable http.HandlerFunc which is called when no matching route is
+	// found. If it is not set, http.NotFound is used.
 	NotFound http.HandlerFunc
 
-	// Handler func to handle panics recovered from http handlers.
+	// Function to handle panics recovered from http handlers.
 	// It should be used to generate a error page and return the http error code
-	// "500 - Internal Server Error".
+	// 500 (Internal Server Error).
 	// The handler can be used to keep your server from crashing because of
 	// unrecovered panics.
 	PanicHandler func(http.ResponseWriter, *http.Request, interface{})
@@ -136,9 +145,8 @@ type Router struct {
 // Make sure the Router conforms with the http.Handler interface
 var _ http.Handler = New()
 
-// New returnes a new initialized Router.
-// The router can be configured to also match the requested HTTP method or the
-// requested Host.
+// New returns a new initialized Router.
+// Path auto-correction, including trailing slashes, is enabled by default.
 func New() *Router {
 	return &Router{
 		RedirectTrailingSlash: true,
@@ -197,7 +205,7 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	root.addRoute(path, handle)
 }
 
-// HandlerFunc is an adapter which allows the usage of a http.HandlerFunc as a
+// HandlerFunc is an adapter which allows the usage of an http.HandlerFunc as a
 // request handle.
 func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
 	r.Handle(method, path,
