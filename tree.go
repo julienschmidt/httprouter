@@ -16,6 +16,20 @@ func min(a, b int) int {
 	return b
 }
 
+func countParams(path string) uint8 {
+	var n uint
+	for i := 0; i < len(path); i++ {
+		if path[i] != ':' && path[i] != '*' {
+			continue
+		}
+		n++
+	}
+	if n >= 255 {
+		return 255
+	}
+	return uint8(n)
+}
+
 type nodeType uint8
 
 const (
@@ -28,6 +42,7 @@ type node struct {
 	path      string
 	wildChild bool
 	nType     nodeType
+	maxParams uint8
 	indices   []byte
 	children  []*node
 	handle    map[string]Handle
@@ -58,10 +73,17 @@ func (n *node) incrementChildPrio(i int) int {
 // Not concurrency-safe!
 func (n *node) addRoute(method, path string, handle Handle) {
 	n.priority++
+	numParams := countParams(path)
+
 	// non-empty tree
 	if len(n.path) > 0 || len(n.children) > 0 {
 	WALK:
 		for {
+			// Update maxParams of the current node
+			if numParams > n.maxParams {
+				n.maxParams = numParams
+			}
+
 			// Find the longest common prefix.
 			// This also implies that the commom prefix contains no ':' or '*'
 			// since the existing key can't contain this chars.
@@ -73,10 +95,11 @@ func (n *node) addRoute(method, path string, handle Handle) {
 			if i < len(n.path) {
 				n.children = []*node{&node{
 					path:      n.path[i:],
+					wildChild: n.wildChild,
+					maxParams: n.maxParams,
 					indices:   n.indices,
 					children:  n.children,
 					handle:    n.handle,
-					wildChild: n.wildChild,
 					priority:  n.priority - 1,
 				}}
 				n.indices = []byte{n.path[i]}
@@ -93,6 +116,12 @@ func (n *node) addRoute(method, path string, handle Handle) {
 					n = n.children[0]
 					n.priority++
 
+					// Update maxParams of the child node
+					if numParams > n.maxParams {
+						n.maxParams = numParams
+					}
+					numParams--
+
 					// Check if the wildcard matches
 					if len(path) >= len(n.path) && n.path == path[:len(n.path)] {
 						// check for longer wildcard, e.g. :name and :names
@@ -106,7 +135,7 @@ func (n *node) addRoute(method, path string, handle Handle) {
 
 				c := path[0]
 
-				// param
+				// slash after param
 				if n.nType == param && c == '/' && len(n.children) == 1 {
 					n = n.children[0]
 					n.priority++
@@ -125,13 +154,14 @@ func (n *node) addRoute(method, path string, handle Handle) {
 				// Otherwise insert it
 				if c != ':' && c != '*' {
 					n.indices = append(n.indices, c)
-					child := &node{}
+					child := &node{
+						maxParams: numParams,
+					}
 					n.children = append(n.children, child)
-
 					n.incrementChildPrio(len(n.indices) - 1)
 					n = child
 				}
-				n.insertChild(method, path, handle)
+				n.insertChild(numParams, method, path, handle)
 				return
 
 			} else if i == len(path) { // Make node a (in-path) leaf
@@ -149,99 +179,108 @@ func (n *node) addRoute(method, path string, handle Handle) {
 			return
 		}
 	} else { // Empty tree
-		n.insertChild(method, path, handle)
+		n.insertChild(numParams, method, path, handle)
 	}
 }
 
-func (n *node) insertChild(method, path string, handle Handle) {
+func (n *node) insertChild(numParams uint8, method, path string, handle Handle) {
 	var offset int
 
 	// find prefix until first wildcard (beginning with ':'' or '*'')
-	for i, j := 0, len(path); i < j; i++ {
-		if c := path[i]; c == ':' || c == '*' {
-			// Check if this Node existing children which would be
-			// unreachable if we insert the wildcard here
-			if len(n.children) > 0 {
-				panic("wildcard route conflicts with existing children")
-			}
+	for i, max := 0, len(path); numParams > 0; i++ {
+		c := path[i]
+		if c != ':' && c != '*' {
+			continue
+		}
 
-			// find wildcard end (either '/' or path end)
-			k := i + 1
-			for k < j && path[k] != '/' {
-				k++
-			}
+		// Check if this Node existing children which would be
+		// unreachable if we insert the wildcard here
+		if len(n.children) > 0 {
+			panic("wildcard route conflicts with existing children")
+		}
 
-			if k-i == 1 {
-				panic("wildcards must be named with a non-empty name")
-			}
+		// find wildcard end (either '/' or path end)
+		end := i + 1
+		for end < max && path[end] != '/' {
+			end++
+		}
 
-			if c == ':' { // param
-				// split path at the beginning of the wildcard
-				if i > 0 {
-					n.path = path[offset:i]
-					offset = i
-				}
+		if end-i < 2 {
+			panic("wildcards must be named with a non-empty name")
+		}
 
-				child := &node{
-					nType: param,
-				}
-				n.children = []*node{child}
-				n.wildChild = true
-				n = child
-				n.priority++
-
-				// if the path doesn't end with the wildcard, then there will be
-				// another non-wildcard subpath starting with '/'
-				if k < j {
-					n.path = path[offset:k]
-					offset = k
-
-					child := &node{}
-					n.children = []*node{child}
-					n = child
-					n.priority++
-				}
-
-			} else { // catchAll
-				if len(path) != k {
-					panic("catch-all routes are only allowed at the end of the path")
-				}
-
-				if len(n.path) > 0 && n.path[len(n.path)-1] == '/' {
-					panic("catch-all conflicts with existing handle for the path segment root")
-				}
-
-				// currently fixed width 1 for '/'
-				i--
-				if path[i] != '/' {
-					panic("no / before catch-all")
-				}
-
+		if c == ':' { // param
+			// split path at the beginning of the wildcard
+			if i > 0 {
 				n.path = path[offset:i]
-
-				// first node: catchAll node with empty path
-				child := &node{
-					wildChild: true,
-					nType:     catchAll,
-				}
-				n.children = []*node{child}
-				n.indices = []byte{path[i]}
-				n = child
-				n.priority++
-
-				// second node: node holding the variable
-				child = &node{
-					path: path[i:],
-					handle: map[string]Handle{
-						method: handle,
-					},
-					nType:    catchAll,
-					priority: 1,
-				}
-				n.children = []*node{child}
-
-				return
+				offset = i
 			}
+
+			child := &node{
+				nType:     param,
+				maxParams: numParams,
+			}
+			n.children = []*node{child}
+			n.wildChild = true
+			n = child
+			n.priority++
+			numParams--
+
+			// if the path doesn't end with the wildcard, then there
+			// will be another non-wildcard subpath starting with '/'
+			if end < max {
+				n.path = path[offset:end]
+				offset = end
+
+				child := &node{
+					maxParams: numParams,
+					priority:  1,
+				}
+				n.children = []*node{child}
+				n = child
+			}
+
+		} else { // catchAll
+			if end != max || numParams > 1 {
+				panic("catch-all routes are only allowed at the end of the path")
+			}
+
+			if len(n.path) > 0 && n.path[len(n.path)-1] == '/' {
+				panic("catch-all conflicts with existing handle for the path segment root")
+			}
+
+			// currently fixed width 1 for '/'
+			i--
+			if path[i] != '/' {
+				panic("no / before catch-all")
+			}
+
+			n.path = path[offset:i]
+
+			// first node: catchAll node with empty path
+			child := &node{
+				wildChild: true,
+				nType:     catchAll,
+				maxParams: 1,
+			}
+			n.children = []*node{child}
+			n.indices = []byte{path[i]}
+			n = child
+			n.priority++
+
+			// second node: node holding the variable
+			child = &node{
+				path:      path[i:],
+				nType:     catchAll,
+				maxParams: 1,
+				handle: map[string]Handle{
+					method: handle,
+				},
+				priority: 1,
+			}
+			n.children = []*node{child}
+
+			return
 		}
 	}
 
@@ -257,7 +296,7 @@ func (n *node) insertChild(method, path string, handle Handle) {
 // If no handle can be found, a TSR (trailing slash redirect) recommendation is
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
-func (n *node) getValue(method, path string) (handle Handle, vars map[string]string, tsr bool) {
+func (n *node) getValue(method, path string) (handle Handle, p Params, tsr bool) {
 walk: // Outer loop for walking the tree
 	for {
 		if len(path) > len(n.path) {
@@ -288,30 +327,31 @@ walk: // Outer loop for walking the tree
 				switch n.nType {
 				case param:
 					// find param end (either '/' or path end)
-					k := 0
-					for k < len(path) && path[k] != '/' {
-						k++
+					end := 0
+					for end < len(path) && path[end] != '/' {
+						end++
 					}
 
 					// save param value
-					if vars == nil {
-						vars = map[string]string{
-							n.path[1:]: path[:k],
-						}
-					} else {
-						vars[n.path[1:]] = path[:k]
+					if p == nil {
+						// lazy allocation
+						p = make(Params, 0, n.maxParams)
 					}
+					i := len(p)
+					p = p[:i+1] // expand slice within preallocated capacity
+					p[i].Key = n.path[1:]
+					p[i].Value = path[:end]
 
 					// we need to go deeper!
-					if k < len(path) {
+					if end < len(path) {
 						if len(n.children) > 0 {
-							path = path[k:]
+							path = path[end:]
 							n = n.children[0]
 							continue walk
 						}
 
 						// ... but we can't
-						tsr = (len(path) == k+1)
+						tsr = (len(path) == end+1)
 						return
 					}
 
@@ -329,14 +369,15 @@ walk: // Outer loop for walking the tree
 					return
 
 				case catchAll:
-					// save catchAll value
-					if vars == nil {
-						vars = map[string]string{
-							n.path[2:]: path,
-						}
-					} else {
-						vars[n.path[2:]] = path
+					// save param value
+					if p == nil {
+						// lazy allocation
+						p = make(Params, 0, n.maxParams)
 					}
+					i := len(p)
+					p = p[:i+1] // expand slice within preallocated capacity
+					p[i].Key = n.path[2:]
+					p[i].Value = path
 
 					handle = n.handle[method]
 					return

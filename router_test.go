@@ -29,15 +29,31 @@ func (m *mockResponseWriter) WriteString(s string) (n int, err error) {
 
 func (m *mockResponseWriter) WriteHeader(int) {}
 
+func TestParams(t *testing.T) {
+	ps := Params{
+		Param{"param1", "value1"},
+		Param{"param2", "value2"},
+		Param{"param3", "value3"},
+	}
+	for i := range ps {
+		if val := ps.ByName(ps[i].Key); val != ps[i].Value {
+			t.Errorf("Wrong value for %s: Got %s; Want %s", ps[i].Key, val, ps[i].Value)
+		}
+	}
+	if val := ps.ByName("noKey"); val != "" {
+		t.Errorf("Expected empty string for not found key; got: %s", val)
+	}
+}
+
 func TestRouter(t *testing.T) {
 	router := New()
 
 	routed := false
-	router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, vars map[string]string) {
+	router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, ps Params) {
 		routed = true
-		want := map[string]string{"name": "gopher"}
-		if !reflect.DeepEqual(vars, want) {
-			t.Fatalf("wrong wildcard values: want %v, got %v", want, vars)
+		want := Params{Param{"name", "gopher"}}
+		if !reflect.DeepEqual(ps, want) {
+			t.Fatalf("wrong wildcard values: want %v, got %v", want, ps)
 		}
 	})
 
@@ -55,19 +71,19 @@ func TestRouterAPI(t *testing.T) {
 	var get, post, put, patch, delete, handlerFunc bool
 
 	router := New()
-	router.GET("/GET", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+	router.GET("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		get = true
 	})
-	router.POST("/POST", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+	router.POST("/POST", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		post = true
 	})
-	router.PUT("/PUT", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+	router.PUT("/PUT", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		put = true
 	})
-	router.PATCH("/PATCH", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+	router.PATCH("/PATCH", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		patch = true
 	})
-	router.DELETE("/DELETE", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+	router.DELETE("/DELETE", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		delete = true
 	})
 	router.HandlerFunc("GET", "/HandlerFunc", func(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +140,7 @@ func TestRouterRoot(t *testing.T) {
 }
 
 func TestRouterNotFound(t *testing.T) {
-	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ map[string]string) {}
+	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
 
 	router := New()
 	router.GET("/path", handlerFunc)
@@ -165,7 +181,7 @@ func TestRouterPanicHandler(t *testing.T) {
 		panicHandled = true
 	}
 
-	router.Handle("PUT", "/user/:name", func(_ http.ResponseWriter, _ *http.Request, _ map[string]string) {
+	router.Handle("PUT", "/user/:name", func(_ http.ResponseWriter, _ *http.Request, _ Params) {
 		panic("oops!")
 	})
 

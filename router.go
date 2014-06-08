@@ -15,12 +15,12 @@
 //      "log"
 //  )
 //
-//  func Index(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+//  func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 //      fmt.Fprint(w, "Welcome!\n")
 //  }
 //
-//  func Hello(w http.ResponseWriter, r *http.Request, vars map[string]string) {
-//      fmt.Fprintf(w, "hello, %s!\n", vars["name"])
+//  func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+//      fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
 //  }
 //
 //  func main() {
@@ -75,7 +75,29 @@ import (
 // Handle is a function that can be registered to a route to handle HTTP
 // requests. Like http.HandlerFunc, but has a third parameter for the values of
 // wildcards (variables).
-type Handle func(http.ResponseWriter, *http.Request, map[string]string)
+type Handle func(http.ResponseWriter, *http.Request, Params)
+
+// Param is a single URL parameter, consisting of a key and a value.
+type Param struct {
+	Key   string
+	Value string
+}
+
+// Params is a Param-slice, as returned by the router.
+// The slice is ordered, the first URL parameter is also the first slice value.
+// It is therefore save to read values by the index.
+type Params []Param
+
+// ByName returns the value of the first Param which key matches the given name.
+// If no matching Param is found, an empty string is returned.
+func (ps Params) ByName(name string) string {
+	for i := range ps {
+		if ps[i].Key == name {
+			return ps[i].Value
+		}
+	}
+	return ""
+}
 
 // NotFound is the default HTTP handler func for routes that can't be matched
 // with an existing route.
@@ -181,7 +203,7 @@ func (r *Router) Handle(method, path string, handle Handle) {
 // request handle.
 func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
 	r.Handle(method, path,
-		func(w http.ResponseWriter, req *http.Request, _ map[string]string) {
+		func(w http.ResponseWriter, req *http.Request, _ Params) {
 			handler(w, req)
 		},
 	)
@@ -204,8 +226,8 @@ func (r *Router) ServeFiles(path string, root http.FileSystem) {
 
 	fileServer := http.FileServer(root)
 
-	r.GET(path, func(w http.ResponseWriter, req *http.Request, vars map[string]string) {
-		req.URL.Path = vars["filepath"]
+	r.GET(path, func(w http.ResponseWriter, req *http.Request, ps Params) {
+		req.URL.Path = ps.ByName("filepath")
 		fileServer.ServeHTTP(w, req)
 	})
 }
@@ -224,8 +246,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	path := req.URL.Path
 
-	if handle, vars, tsr := r.getValue(req.Method, path); handle != nil {
-		handle(w, req, vars)
+	if handle, ps, tsr := r.getValue(req.Method, path); handle != nil {
+		handle(w, req, ps)
 		return
 	} else if tsr && r.RedirectTrailingSlash && path != "/" {
 		if path[len(path)-1] == '/' {
