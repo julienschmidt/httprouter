@@ -254,7 +254,16 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// Make the router implement the http.Handler interface.
+// Lookup allows the manual lookup of a method + path combo.
+// This is e.g. useful to build a framework around this router.
+func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
+	if root := r.trees[method]; root != nil {
+		return root.getValue(path)
+	}
+	return nil, nil, false
+}
+
+// ServeHTTP makes the router implement the http.Handler interface.
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.PanicHandler != nil {
 		defer r.recv(w, req)

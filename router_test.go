@@ -237,6 +237,58 @@ func TestRouterPanicHandler(t *testing.T) {
 	}
 }
 
+func TestRouterLookup(t *testing.T) {
+	routed := false
+	wantHandle := func(_ http.ResponseWriter, _ *http.Request, _ Params) {
+		routed = true
+	}
+	wantParams := Params{Param{"name", "gopher"}}
+
+	router := New()
+
+	// try empty router first
+	handle, _, tsr := router.Lookup("GET", "/nope")
+	if handle != nil {
+		t.Fatalf("Got handle for unregistered pattern: %v", handle)
+	}
+	if tsr {
+		t.Error("Got wrong TSR recommendation!")
+	}
+
+	// insert route and try again
+	router.GET("/user/:name", wantHandle)
+
+	handle, params, tsr := router.Lookup("GET", "/user/gopher")
+	if handle == nil {
+		t.Fatal("Got no handle!")
+	} else {
+		handle(nil, nil, nil)
+		if !routed {
+			t.Fatal("Routing failed!")
+		}
+	}
+
+	if !reflect.DeepEqual(params, wantParams) {
+		t.Fatalf("Wrong parameter values: want %v, got %v", wantParams, params)
+	}
+
+	handle, _, tsr = router.Lookup("GET", "/user/gopher/")
+	if handle != nil {
+		t.Fatalf("Got handle for unregistered pattern: %v", handle)
+	}
+	if !tsr {
+		t.Error("Got no TSR recommendation!")
+	}
+
+	handle, _, tsr = router.Lookup("GET", "/nope")
+	if handle != nil {
+		t.Fatalf("Got handle for unregistered pattern: %v", handle)
+	}
+	if tsr {
+		t.Error("Got wrong TSR recommendation!")
+	}
+}
+
 type mockFileSystem struct {
 	opened bool
 }
