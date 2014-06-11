@@ -406,7 +406,8 @@ walk: // Outer loop for walking the tree
 		// Nothing found. We can recommend to redirect to the same URL with an
 		// extra trailing slash if a leaf exists for that path
 		tsr = (path == "/") ||
-			(n.path[len(path)] == '/' && path == n.path[:len(n.path)-1] && n.handle != nil)
+			(len(n.path) == len(path)+1 && n.path[len(path)] == '/' &&
+				path == n.path[:len(n.path)-1] && n.handle != nil)
 		return
 	}
 }
