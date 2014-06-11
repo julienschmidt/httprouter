@@ -374,6 +374,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/doc/go1.html",
 		"/no/a",
 		"/no/b",
+		"/api/hello/:name",
 	}
 	for _, route := range routes {
 		recv := catchPanic(func() {
@@ -414,6 +415,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/no/",
 		"/_",
 		"/_/",
+		"/api/world/abc",
 	}
 	for _, route := range noTsrRoutes {
 		handler, _, tsr := tree.getValue(route)
