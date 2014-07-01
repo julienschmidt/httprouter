@@ -299,7 +299,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					CleanPath(path),
 					r.RedirectTrailingSlash,
 				)
-				if found {
+				if found && len(fixedPath) > 0 {
 					req.URL.Path = string(fixedPath)
 					http.Redirect(w, req, req.URL.String(), code)
 					return
