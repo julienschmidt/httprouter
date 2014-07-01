@@ -189,6 +189,8 @@ for example the [Gorilla handlers](http://www.gorillatoolkit.org/pkg/handlers).
 Or you could [just write your own](http://justinas.org/writing-http-middleware-in-go/),
 it's very easy!
 
+Alternatively, you could try [a framework building upon HttpRouter](web-frameworks-building-upon-httprouter).
+
 Here is a quick example: Does your server serve multiple domains / hosts?
 You want to use sub-domains?
 Define a router per host!
@@ -225,3 +227,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":12345", hs))
 }
 ```
+
+## Web Frameworks building upon HttpRouter
+If the HttpRouter is a bit too minimalistic for you, you might try one of the following more high-level 3rd-party web frameworks building upon the HttpRouter package:
+* [Gin](https://github.com/gin-gonic/gin): Features a martini-like API with much better performance
