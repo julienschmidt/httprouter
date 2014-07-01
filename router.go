@@ -275,7 +275,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if handle, ps, tsr := root.getValue(path); handle != nil {
 			handle(w, req, ps)
 			return
-		} else if req.Method != "CONNECT" {
+		} else if req.Method != "CONNECT" && path != "/" {
 			code := 301 // Permanent redirect, request with GET method
 			if req.Method != "GET" {
 				// Temporary redirect, request with same method
@@ -283,7 +283,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				code = 307
 			}
 
-			if tsr && r.RedirectTrailingSlash && path != "/" {
+			if tsr && r.RedirectTrailingSlash {
 				if path[len(path)-1] == '/' {
 					req.URL.Path = path[:len(path)-1]
 				} else {

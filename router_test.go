@@ -207,6 +207,16 @@ func TestRouterNotFound(t *testing.T) {
 	if !(w.Code == 307 && fmt.Sprint(w.Header()) == "map[Location:[/path]]") {
 		t.Errorf("Custom NotFound handler failed: Code=%d, Header=%v", w.Code, w.Header())
 	}
+
+	// Test special case where no node for the prefix "/" exists
+	router = New()
+	router.GET("/a", handlerFunc)
+	r, _ = http.NewRequest("GET", "/", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == 404) {
+		t.Errorf("NotFound handling route / failed: Code=%d", w.Code)
+	}
 }
 
 func TestRouterPanicHandler(t *testing.T) {
