@@ -231,3 +231,5 @@ func main() {
 ## Web Frameworks building upon HttpRouter
 If the HttpRouter is a bit too minimalistic for you, you might try one of the following more high-level 3rd-party web frameworks building upon the HttpRouter package:
 * [Gin](https://github.com/gin-gonic/gin): Features a martini-like API with much better performance
+* [gorest](https://github.com/crackcomm/gorest): HTTP REST API framework
+* [Hikaru](https://github.com/najeira/hikaru): Supports standalone and Google AppEngine
