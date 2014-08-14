@@ -93,7 +93,7 @@ type Param struct {
 
 // Params is a Param-slice, as returned by the router.
 // The slice is ordered, the first URL parameter is also the first slice value.
-// It is therefore save to read values by the index.
+// It is therefore safe to read values by the index.
 type Params []Param
 
 // ByName returns the value of the first Param which key matches the given name.
