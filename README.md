@@ -110,6 +110,13 @@ Pattern: /src/*filepath
  /src/subdir/somefile.go   match
 ```
 
+### Static files
+You can replace the default NotFound handler in order to serve static files.
+```go
+// Serve static files from the ./public directory
+router.NotFound = http.FileServer(http.Dir("public")).ServeHTTP
+```
+
 ## How does it work?
 The router relies on a tree structure which makes heavy use of *common prefixes*,
 it is basically a *compact* [*prefix tree*](http://en.wikipedia.org/wiki/Trie)
