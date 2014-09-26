@@ -111,7 +111,7 @@ Pattern: /src/*filepath
 ```
 
 ### Static files
-You can replace the default NotFound handler in order to serve static files.
+If you'd like to serve static files in the root path `/` (like an index.html file along with other assets), you can use a custom `NotFound` handler:
 ```go
 // Serve static files from the ./public directory
 router.NotFound = http.FileServer(http.Dir("public")).ServeHTTP
