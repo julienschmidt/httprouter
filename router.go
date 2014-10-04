@@ -159,6 +159,11 @@ func (r *Router) GET(path string, handle Handle) {
 	r.Handle("GET", path, handle)
 }
 
+// HEAD is a shortcut for router.Handle("HEAD", path, handle)
+func (r *Router) HEAD(path string, handle Handle) {
+	r.Handle("HEAD", path, handle)
+}
+
 // POST is a shortcut for router.Handle("POST", path, handle)
 func (r *Router) POST(path string, handle Handle) {
 	r.Handle("POST", path, handle)
@@ -181,7 +186,7 @@ func (r *Router) DELETE(path string, handle Handle) {
 
 // Handle registers a new request handle with the given path and method.
 //
-// For GET, POST, PUT, PATCH and DELETE requests the respective shortcut
+// For GET, HEAD, POST, PUT, PATCH and DELETE requests the respective shortcut
 // functions can be used.
 //
 // This function is intended for bulk loading and to allow the usage of less
