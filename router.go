@@ -110,7 +110,7 @@ func (ps Params) ByName(name string) string {
 // Router is a http.Handler which can be used to dispatch requests to different
 // handler functions via configurable routes
 type Router struct {
-	trees map[string]*node
+	trees Tree
 
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
@@ -198,16 +198,10 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	}
 
 	if r.trees == nil {
-		r.trees = make(map[string]*node)
+		r.trees = make(Tree)
 	}
 
-	root := r.trees[method]
-	if root == nil {
-		root = new(node)
-		r.trees[method] = root
-	}
-
-	root.addRoute(path, handle)
+	r.trees.Handle(method, path, handle)
 }
 
 // Handler is an adapter which allows the usage of an http.Handler as a
@@ -262,10 +256,14 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 // Lookup allows the manual lookup of a method + path combo.
 // This is e.g. useful to build a framework around this router.
 func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
-	if root := r.trees[method]; root != nil {
-		return root.getValue(path)
+	var h Handle
+	handle, ps, tsr := r.trees.Lookup(method, path)
+
+	if handle != nil {
+		h = handle.(Handle)
 	}
-	return nil, nil, false
+
+	return h, ps, tsr
 }
 
 // ServeHTTP makes the router implement the http.Handler interface.
@@ -278,7 +276,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		path := req.URL.Path
 
 		if handle, ps, tsr := root.getValue(path); handle != nil {
-			handle(w, req, ps)
+			handle.(Handle)(w, req, ps)
 			return
 		} else if req.Method != "CONNECT" && path != "/" {
 			code := 301 // Permanent redirect, request with GET method
