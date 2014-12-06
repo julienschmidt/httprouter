@@ -171,6 +171,7 @@ func TestRouterNotFound(t *testing.T) {
 	router := New()
 	router.GET("/path", handlerFunc)
 	router.GET("/dir/", handlerFunc)
+	router.GET("/", handlerFunc)
 
 	testRoutes := []struct {
 		route  string
@@ -178,6 +179,7 @@ func TestRouterNotFound(t *testing.T) {
 		header string
 	}{
 		{"/path/", 301, "map[Location:[/path]]"},   // TSR -/
+		{"/dir", 301, "map[Location:[/dir/]]"},     // TSR +/
 		{"/dir", 301, "map[Location:[/dir/]]"},     // TSR +/
 		{"/PATH", 301, "map[Location:[/path]]"},    // Fixed Case
 		{"/DIR/", 301, "map[Location:[/dir/]]"},    // Fixed Case
