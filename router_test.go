@@ -180,7 +180,7 @@ func TestRouterNotFound(t *testing.T) {
 	}{
 		{"/path/", 301, "map[Location:[/path]]"},   // TSR -/
 		{"/dir", 301, "map[Location:[/dir/]]"},     // TSR +/
-		{"/dir", 301, "map[Location:[/dir/]]"},     // TSR +/
+		{"", 301, "map[Location:[/]]"},             // TSR +/
 		{"/PATH", 301, "map[Location:[/path]]"},    // Fixed Case
 		{"/DIR/", 301, "map[Location:[/dir/]]"},    // Fixed Case
 		{"/PATH/", 301, "map[Location:[/path]]"},   // Fixed Case -/
