@@ -5,6 +5,8 @@
 package httprouter
 
 import (
+	"net/http"
+	"net/url"
 	"strings"
 	"unicode"
 )
@@ -294,7 +296,10 @@ func (n *node) insertChild(numParams uint8, path string, handle Handle) {
 // If no handle can be found, a TSR (trailing slash redirect) recommendation is
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
-func (n *node) getValue(path string) (handle Handle, p Params, tsr bool) {
+func (n *node) getValue(path string, r *http.Request) (handle Handle, tsr bool) {
+	if r == nil {
+		r = &http.Request{}
+	}
 walk: // Outer loop for walking the tree
 	for {
 		if len(path) > len(n.path) {
@@ -330,15 +335,12 @@ walk: // Outer loop for walking the tree
 						end++
 					}
 
-					// save param value
-					if p == nil {
-						// lazy allocation
-						p = make(Params, 0, n.maxParams)
+					if r.URL == nil {
+						r.URL = &url.URL{}
 					}
-					i := len(p)
-					p = p[:i+1] // expand slice within preallocated capacity
-					p[i].Key = n.path[1:]
-					p[i].Value = path[:end]
+					p := r.URL.Query()
+					p.Add(n.path[1:], path[:end])
+					r.URL.RawQuery = p.Encode()
 
 					// we need to go deeper!
 					if end < len(path) {
@@ -365,15 +367,13 @@ walk: // Outer loop for walking the tree
 					return
 
 				case catchAll:
-					// save param value
-					if p == nil {
-						// lazy allocation
-						p = make(Params, 0, n.maxParams)
+					if r.URL == nil {
+						r.URL = &url.URL{}
 					}
-					i := len(p)
-					p = p[:i+1] // expand slice within preallocated capacity
-					p[i].Key = n.path[2:]
-					p[i].Value = path
+					// save param value
+					p := r.URL.Query()
+					p.Add(n.path[2:], path)
+					r.URL.RawQuery = p.Encode()
 
 					handle = n.handle
 					return
