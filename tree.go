@@ -38,6 +38,30 @@ const (
 	catchAll nodeType = 2
 )
 
+type Tree map[string]*node
+
+func (t Tree) Handle(method, path string, handle interface{}) {
+	if path[0] != '/' {
+		panic("path must begin with '/'")
+	}
+
+	root := t[method]
+	if root == nil {
+		root = new(node)
+		t[method] = root
+	}
+
+	root.addRoute(path, handle)
+}
+
+func (t Tree) Lookup(method, path string) (interface{}, Params, bool) {
+	if root := t[method]; root != nil {
+		return root.getValue(path)
+	}
+
+	return nil, nil, false
+}
+
 type node struct {
 	path      string
 	wildChild bool
@@ -45,7 +69,7 @@ type node struct {
 	maxParams uint8
 	indices   []byte
 	children  []*node
-	handle    Handle
+	handle    interface{}
 	priority  uint32
 }
 
@@ -71,7 +95,7 @@ func (n *node) incrementChildPrio(i int) int {
 
 // addRoute adds a node with the given handle to the path.
 // Not concurrency-safe!
-func (n *node) addRoute(path string, handle Handle) {
+func (n *node) addRoute(path string, handle interface{}) {
 	n.priority++
 	numParams := countParams(path)
 
@@ -185,7 +209,7 @@ func (n *node) addRoute(path string, handle Handle) {
 	}
 }
 
-func (n *node) insertChild(numParams uint8, path string, handle Handle) {
+func (n *node) insertChild(numParams uint8, path string, handle interface{}) {
 	var offset int
 
 	// find prefix until first wildcard (beginning with ':'' or '*'')
@@ -294,7 +318,7 @@ func (n *node) insertChild(numParams uint8, path string, handle Handle) {
 // If no handle can be found, a TSR (trailing slash redirect) recommendation is
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
-func (n *node) getValue(path string) (handle Handle, p Params, tsr bool) {
+func (n *node) getValue(path string) (handle interface{}, p Params, tsr bool) {
 walk: // Outer loop for walking the tree
 	for {
 		if len(path) > len(n.path) {
