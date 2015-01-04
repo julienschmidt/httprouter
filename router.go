@@ -314,7 +314,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Handle 405
-	for method, _ := range r.trees {
+	for method := range r.trees {
 		if method == req.Method {
 			continue
 		}
