@@ -191,6 +191,7 @@ it's very easy!
 
 Alternatively, you could try [a framework building upon HttpRouter](#web-frameworks-building-upon-httprouter).
 
+### Multi-domain / Sub-domains
 Here is a quick example: Does your server serve multiple domains / hosts?
 You want to use sub-domains?
 Define a router per host!
@@ -225,6 +226,67 @@ func main() {
 
 	// Use the HostSwitch to listen and serve on port 12345
 	log.Fatal(http.ListenAndServe(":12345", hs))
+}
+```
+
+### Basic Authentication
+Another quick example: Basic Authentification (RFC 2617) for handles:
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/base64"
+    "fmt"
+    "github.com/julienschmidt/httprouter"
+    "net/http"
+    "log"
+    "strings"
+)
+
+func BasicAuth(h httprouter.Handle, user, pass []byte) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		const basicAuthPrefix string = "Basic "
+
+		// Get the Basic Authentication credentials
+		auth := r.Header.Get("Authorization")
+		if strings.HasPrefix(auth, basicAuthPrefix) {
+			// Check credentials
+			payload, err := base64.StdEncoding.DecodeString(auth[len(basicAuthPrefix):])
+			if err == nil {
+				pair := bytes.SplitN(payload, []byte(":"), 2)
+				if len(pair) == 2 && bytes.Equal(pair[0], user) && bytes.Equal(pair[1], pass) {
+					// Delegate request to the given handle
+					h(w, r, ps)
+					return
+				}
+			}
+		}
+
+		// Request Basic Authentication otherwise
+		w.Header().Set("WWW-Authenticate", "Basic realm=Restricted")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+	}
+}
+
+func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+    fmt.Fprint(w, "Not protected!\n")
+}
+
+func Protected(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+    fmt.Fprint(w, "Protected!\n")
+}
+
+func main() {
+    user := []byte("gordon")
+    pass := []byte("secret!")
+    
+    router := httprouter.New()
+    router.GET("/", Index)
+    router.GET("/protected/", BasicAuth(Protected, user, pass))
+
+    log.Fatal(http.ListenAndServe(":8080", router))
 }
 ```
 
