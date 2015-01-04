@@ -320,7 +320,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if handle, _, _ := r.trees[method].getValue(req.URL.Path); handle != nil {
-			http.Error(w, "405 method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 	}
