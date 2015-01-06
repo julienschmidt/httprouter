@@ -189,7 +189,7 @@ for example the [Gorilla handlers](http://www.gorillatoolkit.org/pkg/handlers).
 Or you could [just write your own](http://justinas.org/writing-http-middleware-in-go/),
 it's very easy!
 
-Alternatively, you could try [a framework building upon HttpRouter](#web-frameworks-co-based-on-httprouter).
+Alternatively, you could try [a framework building upon HttpRouter](#web-frameworks--co-based-on-httprouter).
 
 ### Multi-domain / Sub-domains
 Here is a quick example: Does your server serve multiple domains / hosts?
