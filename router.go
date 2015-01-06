@@ -313,21 +313,6 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	// Handle 405
-	for method := range r.trees {
-		if method == req.Method {
-			continue
-		}
-
-		if handle, _, _ := r.trees[method].getValue(req.URL.Path); handle != nil {
-			http.Error(w,
-				http.StatusText(http.StatusMethodNotAllowed),
-				http.StatusMethodNotAllowed,
-			)
-			return
-		}
-	}
-
 	// Handle 404
 	if r.NotFound != nil {
 		r.NotFound(w, req)
