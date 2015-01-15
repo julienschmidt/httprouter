@@ -123,12 +123,20 @@ type Router struct {
 	// handle is registered for it.
 	// First superfluous path elements like ../ or // are removed.
 	// Afterwards the router does a case-insensitive lookup of the cleaned path.
-	// If a handle can be found for this route, the router makes a  redirection
+	// If a handle can be found for this route, the router makes a redirection
 	// to the corrected path with status code 301 for GET requests and 307 for
 	// all other request methods.
 	// For example /FOO and /..//Foo could be redirected to /foo.
 	// RedirectTrailingSlash is independent of this option.
 	RedirectFixedPath bool
+
+	// If enabled, the router checks if another method is allowed for the
+	// current route, if the current request can not be routed.
+	// If this is the case, the request is answered with 'Method Not Allowed'
+	// and HTTP status code 405.
+	// If no other Method is allowed, the request is delegated to the NotFound
+	// handler.
+	HandleMethodNotAllowed bool
 
 	// Configurable http.HandlerFunc which is called when no matching route is
 	// found. If it is not set, http.NotFound is used.
@@ -149,8 +157,9 @@ var _ http.Handler = New()
 // Path auto-correction, including trailing slashes, is enabled by default.
 func New() *Router {
 	return &Router{
-		RedirectTrailingSlash: true,
-		RedirectFixedPath:     true,
+		RedirectTrailingSlash:  true,
+		RedirectFixedPath:      true,
+		HandleMethodNotAllowed: true,
 	}
 }
 
@@ -309,6 +318,25 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					http.Redirect(w, req, req.URL.String(), code)
 					return
 				}
+			}
+		}
+	}
+
+	// Handle 405
+	if r.HandleMethodNotAllowed {
+		for method := range r.trees {
+			// Skip the requested method - we already tried this one
+			if method == req.Method {
+				continue
+			}
+
+			handle, _, _ := r.trees[method].getValue(req.URL.Path)
+			if handle != nil {
+				http.Error(w,
+					http.StatusText(http.StatusMethodNotAllowed),
+					http.StatusMethodNotAllowed,
+				)
+				return
 			}
 		}
 	}

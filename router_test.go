@@ -165,6 +165,21 @@ func TestRouterRoot(t *testing.T) {
 	}
 }
 
+func TestRouterNotAllowed(t *testing.T) {
+	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+
+	router := New()
+	router.POST("/path", handlerFunc)
+
+	// Test not allowed
+	r, _ := http.NewRequest("GET", "/path", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == http.StatusMethodNotAllowed) {
+		t.Errorf("NotAllowed handling route %s failed: Code=%d, Header=%v", w.Code, w.Header())
+	}
+}
+
 func TestRouterNotFound(t *testing.T) {
 	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
 
