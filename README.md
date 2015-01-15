@@ -110,13 +110,6 @@ Pattern: /src/*filepath
  /src/subdir/somefile.go   match
 ```
 
-### Static files
-If you'd like to serve static files in the root path `/` (like an index.html file along with other assets), you can use a custom `NotFound` handler:
-```go
-// Serve static files from the ./public directory
-router.NotFound = http.FileServer(http.Dir("public")).ServeHTTP
-```
-
 ## How does it work?
 The router relies on a tree structure which makes heavy use of *common prefixes*,
 it is basically a *compact* [*prefix tree*](http://en.wikipedia.org/wiki/Trie)
@@ -296,6 +289,21 @@ func main() {
     log.Fatal(http.ListenAndServe(":8080", router))
 }
 ```
+
+## Chaining with the NotFound handler
+
+**NOTE: It might be required to set [Router.HandleMethodNotAllowed](http://godoc.org/github.com/julienschmidt/httprouter#Router.HandleMethodNotAllowed) to `false` to avoid problems.**
+
+You can use another [http.HandlerFunc](http://golang.org/pkg/net/http/#HandlerFunc), for example another router, to handle requests which could not be matched by this router by using the [Router.NotFound](http://godoc.org/github.com/julienschmidt/httprouter#Router.NotFound) handler. This allows chaining.
+
+### Static files
+The `NotFound` handler can for example be used to serve static files from the root path `/` (like an index.html file along with other assets):
+```go
+// Serve static files from the ./public directory
+router.NotFound = http.FileServer(http.Dir("public")).ServeHTTP
+```
+
+But this approach sidesteps the strict core rules of this router to avoid routing problems. A cleaner approach is to use a distinct sub-path for serving files, like `/static/*filepath` or `/files/*filepath`.
 
 ## Web Frameworks & Co based on HttpRouter
 If the HttpRouter is a bit too minimalistic for you, you might try one of the following more high-level 3rd-party web frameworks building upon the HttpRouter package:
