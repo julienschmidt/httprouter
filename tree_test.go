@@ -557,3 +557,28 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		}
 	}
 }
+
+func TestTreeInvalidNodeType(t *testing.T) {
+	tree := &node{}
+	tree.addRoute("/", fakeHandler("/"))
+	tree.addRoute("/:page", fakeHandler("/:page"))
+
+	// set invalid node type
+	tree.children[0].nType = 42
+
+	// normal lookup
+	recv := catchPanic(func() {
+		tree.getValue("/test")
+	})
+	if rs, ok := recv.(string); !ok || rs != "Invalid node type" {
+		t.Fatalf(`Expected panic "Invalid node type", got "%v"`, recv)
+	}
+
+	// case-insensitive lookup
+	recv = catchPanic(func() {
+		tree.findCaseInsensitivePath("/test", true)
+	})
+	if rs, ok := recv.(string); !ok || rs != "Invalid node type" {
+		t.Fatalf(`Expected panic "Invalid node type", got "%v"`, recv)
+	}
+}

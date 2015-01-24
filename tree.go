@@ -379,7 +379,7 @@ walk: // Outer loop for walking the tree
 					return
 
 				default:
-					panic("Unknown node type")
+					panic("Invalid node type")
 				}
 			}
 		} else if path == n.path {
@@ -490,7 +490,7 @@ func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPa
 					return append(ciPath, path...), true
 
 				default:
-					panic("Unknown node type")
+					panic("Invalid node type")
 				}
 			}
 		} else {
