@@ -176,7 +176,7 @@ func TestRouterNotAllowed(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, r)
 	if !(w.Code == http.StatusMethodNotAllowed) {
-		t.Errorf("NotAllowed handling route %s failed: Code=%d, Header=%v", w.Code, w.Header())
+		t.Errorf("NotAllowed handling failed: Code=%d, Header=%v", w.Code, w.Header())
 	}
 }
 
