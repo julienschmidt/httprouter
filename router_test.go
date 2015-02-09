@@ -178,6 +178,20 @@ func TestRouterNotAllowed(t *testing.T) {
 	if !(w.Code == http.StatusMethodNotAllowed) {
 		t.Errorf("NotAllowed handling failed: Code=%d, Header=%v", w.Code, w.Header())
 	}
+
+	w = httptest.NewRecorder()
+	responseText := "custom method"
+	router.MethodNotAllowed = func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+		w.Write([]byte(responseText))
+	}
+	router.ServeHTTP(w, r)
+	if got := w.Body.String(); !(got == responseText) {
+		t.Errorf("unexpected response got %q want %q", got, responseText)
+	}
+	if w.Code != http.StatusTeapot {
+		t.Errorf("unexpected response code %d want %d", w.Code, http.StatusTeapot)
+	}
 }
 
 func TestRouterNotFound(t *testing.T) {
