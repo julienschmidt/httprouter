@@ -129,6 +129,28 @@ func TestRawPathRoutingMixed(t *testing.T) {
 	}
 }
 
+func TestRawPathRoutingCleanPath(t *testing.T) {
+	router := New()
+	router.RawPathRouting = true
+
+	routed := false
+	router.Handle("GET", "/u/:u/pher/p/:p", func(w http.ResponseWriter, r *http.Request, ps Params) {
+		routed = true
+		want := Params{Param{"u", "."}, Param{"p", ".."}}
+		if !reflect.DeepEqual(ps, want) {
+			t.Fatalf("wrong wildcard values: want %v, got %v", want, ps)
+		}
+	})
+
+	w := new(mockResponseWriter)
+
+	req := newRequest(t, "GET", "/u/./pher/p/..")
+	router.ServeHTTP(w, req)
+	if !routed {
+		t.Fatal("routing failed")
+	}
+}
+
 func TestRawPathRoutingNotFound(t *testing.T) {
 	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
 
