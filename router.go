@@ -142,6 +142,11 @@ type Router struct {
 	// found. If it is not set, http.NotFound is used.
 	NotFound http.HandlerFunc
 
+	// Configurable http.HandlerFunc which is called when a request
+	// cannot be routed and HandleMethodNotAllowed is true.
+	// If it is not set, http.Error with http.StatusMethodNotAllowed is used.
+	MethodNotAllowed http.HandlerFunc
+
 	// Function to handle panics recovered from http handlers.
 	// It should be used to generate a error page and return the http error code
 	// 500 (Internal Server Error).
@@ -335,10 +340,14 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 			handle, _, _ := r.trees[method].getValue(req.URL.Path)
 			if handle != nil {
-				http.Error(w,
-					http.StatusText(http.StatusMethodNotAllowed),
-					http.StatusMethodNotAllowed,
-				)
+				if r.MethodNotAllowed != nil {
+					r.MethodNotAllowed(w, req)
+				} else {
+					http.Error(w,
+						http.StatusText(http.StatusMethodNotAllowed),
+						http.StatusMethodNotAllowed,
+					)
+				}
 				return
 			}
 		}
