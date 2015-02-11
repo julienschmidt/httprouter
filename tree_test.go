@@ -339,6 +339,27 @@ func TestTreeCatchAllConflictRoot(t *testing.T) {
 	testRoutes(t, routes)
 }
 
+func TestTreeDoubleWildcard(t *testing.T) {
+	const panicMsg = "only one wildcard per path segment is allowed"
+
+	routes := [...]string{
+		"/:foo:bar",
+		"/:foo:bar/",
+		"/:foo*bar",
+	}
+
+	for _, route := range routes {
+		tree := &node{}
+		recv := catchPanic(func() {
+			tree.addRoute(route, nil)
+		})
+
+		if rs, ok := recv.(string); !ok || rs != panicMsg {
+			t.Fatalf(`"Expected panic "%s" for route '%s', got "%v"`, panicMsg, route, recv)
+		}
+	}
+}
+
 /*func TestTreeDuplicateWildcard(t *testing.T) {
 	tree := &node{}
 
