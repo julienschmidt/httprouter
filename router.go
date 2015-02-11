@@ -78,6 +78,7 @@ package httprouter
 
 import (
 	"net/http"
+	"strings"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
@@ -285,45 +286,85 @@ func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
 	return nil, nil, false
 }
 
-// ServeHTTP makes the router implement the http.Handler interface.
-func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+// ServeHTTPWithParams serves an HTTP request similarly to
+// ServeHTTP except that it is type-compatible with Handle,
+// so can be used to make a router into a subrouter.
+//
+// If p contains a parameter with a key named "path", its value will be used
+// as the path for routing instead of the path in the URL.
+// This enables a subrouter to route subtrees while
+// still retaining the full original path in the request URL
+// so redirection works correctly, by adding a handler
+// with a "*path" suffix.
+//
+// For example, given:
+//
+// 	subrouter := httprouter.New()
+//	subrouter.Handle("GET", "/subpath", someHandler)
+//	router := httprouter.New()
+//	router.Handle("GET", "/some/path/*path", subrouter)
+//
+// then router will handle requests to /some/path/subpath
+// by invoking someHandler.
+func (r *Router) ServeHTTPWithParams(w http.ResponseWriter, req *http.Request, p Params) {
 	if r.PanicHandler != nil {
 		defer r.recv(w, req)
 	}
+	path := req.URL.Path
+	usingSubpath := false
+	if subpath := p.ByName("path"); subpath != "" {
+		// Use the path specified in the parameters for routing instead
+		// of the path in the URL.
+		path = subpath
+		usingSubpath = true
+	}
 
 	if root := r.trees[req.Method]; root != nil {
-		path := req.URL.Path
-
-		if handle, ps, tsr := root.getValue(path); handle != nil {
+		handle, ps, tsr := root.getValue(path)
+		if handle != nil {
 			handle(w, req, ps)
 			return
-		} else if req.Method != "CONNECT" && path != "/" {
+		}
+		if req.Method != "CONNECT" && path != "/" {
 			code := 301 // Permanent redirect, request with GET method
 			if req.Method != "GET" {
 				// Temporary redirect, request with same method
 				// As of Go 1.3, Go does not support status code 308.
 				code = 307
 			}
-
+			urlPath := req.URL.Path
 			if tsr && r.RedirectTrailingSlash {
-				if len(path) > 1 && path[len(path)-1] == '/' {
-					req.URL.Path = path[:len(path)-1]
+				url := req.URL
+				// Use the actual URL path here for redirections
+				// rather than the path we were routing with,
+				// which may be different.
+				if strings.HasSuffix(urlPath, "/") {
+					url.Path = urlPath[:len(urlPath)-1]
 				} else {
-					req.URL.Path = path + "/"
+					url.Path = urlPath + "/"
 				}
-				http.Redirect(w, req, req.URL.String(), code)
+				http.Redirect(w, req, url.String(), code)
 				return
 			}
 
 			// Try to fix the request path
 			if r.RedirectFixedPath {
-				fixedPath, found := root.findCaseInsensitivePath(
+				fixedPath0, found := root.findCaseInsensitivePath(
 					CleanPath(path),
 					r.RedirectTrailingSlash,
 				)
+				fixedPath := string(fixedPath0)
 				if found {
-					req.URL.Path = string(fixedPath)
-					http.Redirect(w, req, req.URL.String(), code)
+					// The path passed into ServeHTTPWithParams should
+					// always be a suffix of the URL path, but be sensible if it
+					// isn't. An alternative might be to return a 500 status in
+					// that case.
+					if usingSubpath && strings.HasSuffix(req.URL.Path, path) {
+						fixedPath = req.URL.Path[0:len(req.URL.Path)-len(path)] + fixedPath
+					}
+					url := req.URL
+					url.Path = fixedPath
+					http.Redirect(w, req, url.String(), code)
 					return
 				}
 			}
@@ -338,7 +379,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				continue
 			}
 
-			handle, _, _ := r.trees[method].getValue(req.URL.Path)
+			handle, _, _ := r.trees[method].getValue(path)
 			if handle != nil {
 				if r.MethodNotAllowed != nil {
 					r.MethodNotAllowed(w, req)
@@ -359,4 +400,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	} else {
 		http.NotFound(w, req)
 	}
+}
+
+// ServeHTTP makes the router implement the http.Handler interface.
+func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	r.ServeHTTPWithParams(w, req, nil)
 }

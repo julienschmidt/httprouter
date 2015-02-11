@@ -287,6 +287,124 @@ func TestRouterPanicHandler(t *testing.T) {
 	}
 }
 
+func TestRouterSubroute(t *testing.T) {
+	var gotParams Params
+	var gotRequest *http.Request
+
+	h := func(_ http.ResponseWriter, req *http.Request, p Params) {
+		gotRequest = req
+		gotParams = p
+	}
+
+	subRouter := New()
+	subRouter.Handle("GET", "/x/:foo", h)
+	subRouter.Handle("GET", "/y/*rest", h)
+	router := New()
+	router.Handle("GET", "/a/*path", subRouter.ServeHTTPWithParams)
+	router.Handle("GET", "/b/c/*path", subRouter.ServeHTTPWithParams)
+
+	test := func(path string, p Params) {
+		gotParams = nil
+		gotRequest = nil
+		w := new(mockResponseWriter)
+		req, _ := http.NewRequest("GET", path, nil)
+		router.ServeHTTP(w, req)
+		if gotRequest == nil {
+			t.Fatalf("subrouter was not invoked for path %s", path)
+		}
+		if gotRequest.URL.Path != path {
+			t.Errorf("unexpected path, got %q want %q", req.URL.Path, path)
+		}
+		if len(gotParams) == 0 {
+			gotParams = nil
+		}
+		if !reflect.DeepEqual(gotParams, p) {
+			t.Errorf("unexpected params for %s: got %#v want %#v", path, gotParams, p)
+		}
+	}
+	test("/a/x/goodbye", Params{{
+		Key:   "foo",
+		Value: "goodbye",
+	}})
+	test("/b/c/y/1/2/3", Params{{
+		Key:   "rest",
+		Value: "/1/2/3",
+	}})
+}
+
+func TestRouterSubrouteRedirect(t *testing.T) {
+	subRouter := New()
+	subRouter.Handle("GET", "/x", func(_ http.ResponseWriter, req *http.Request, p Params) {})
+	router := New()
+	router.Handle("GET", "/a/*path", subRouter.ServeHTTPWithParams)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/a/x/", nil)
+	router.ServeHTTP(w, req)
+	wantCode := http.StatusMovedPermanently
+	if w.Code != wantCode {
+		t.Errorf("unexpected response, got %v want %v", w.Code, wantCode)
+	}
+	wantLoc := "/a/x"
+	if gotLoc := w.HeaderMap.Get("Location"); gotLoc != wantLoc {
+		t.Errorf("unexpected redirect location, got %v want %v", gotLoc, wantLoc)
+	}
+}
+
+func TestRouterSubrouteRedirectWithFixedPath(t *testing.T) {
+	subRouter := New()
+	subRouter.Handle("GET", "/x", func(_ http.ResponseWriter, req *http.Request, p Params) {})
+	router := New()
+	router.Handle("GET", "/a/*path", subRouter.ServeHTTPWithParams)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/a/X/", nil)
+	router.ServeHTTP(w, req)
+	wantCode := http.StatusMovedPermanently
+	if w.Code != wantCode {
+		t.Errorf("unexpected response, got %v want %v", w.Code, wantCode)
+	}
+	wantLoc := "/a/x"
+	if gotLoc := w.HeaderMap.Get("Location"); gotLoc != wantLoc {
+		t.Errorf("unexpected redirect location, got %v want %v", gotLoc, wantLoc)
+	}
+}
+
+func TestRouterSubrouteMethodNotFound(t *testing.T) {
+	subRouter := New()
+	subRouter.Handle("GET", "/x", func(_ http.ResponseWriter, req *http.Request, p Params) {})
+	router := New()
+	router.Handle("GET", "/a/*path", subRouter.ServeHTTPWithParams)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("PUT", "/a/x", nil)
+	router.ServeHTTP(w, req)
+	wantCode := http.StatusMethodNotAllowed
+	if w.Code != wantCode {
+		t.Errorf("unexpected response, got %v want %v", w.Code, wantCode)
+	}
+}
+
+func TestRouterSubrouteWithMismatchingPath(t *testing.T) {
+	router := New()
+	router.Handle("GET", "/x", func(_ http.ResponseWriter, req *http.Request, p Params) {})
+	router.Handle("GET", "/y", func(_ http.ResponseWriter, req *http.Request, p Params) {})
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/x/", nil)
+	router.ServeHTTPWithParams(w, req, Params{{
+		Key:   "path",
+		Value: "/Y",
+	}})
+	wantCode := http.StatusMovedPermanently
+	if w.Code != wantCode {
+		t.Errorf("unexpected response, got %v want %v", w.Code, wantCode)
+	}
+	wantLoc := "/y"
+	if gotLoc := w.HeaderMap.Get("Location"); gotLoc != wantLoc {
+		t.Errorf("unexpected redirect location, got %v want %v", gotLoc, wantLoc)
+	}
+}
+
 func TestRouterLookup(t *testing.T) {
 	routed := false
 	wantHandle := func(_ http.ResponseWriter, _ *http.Request, _ Params) {
