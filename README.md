@@ -3,27 +3,15 @@
 HttpRouter is a lightweight high performance HTTP request router
 (also called *multiplexer* or just *mux* for short) for [Go](http://golang.org/).
 
-In contrast to the default mux of Go's net/http package, this router supports
+In contrast to the [default mux](http://golang.org/pkg/net/http/#ServeMux) of Go's net/http package, this router supports
 variables in the routing pattern and matches against the request method.
 It also scales better.
 
-The router is optimized for best performance and a small memory footprint.
+The router is optimized for high performance and a small memory footprint.
 It scales well even with very long paths and a large number of routes.
 A compressing dynamic trie (radix tree) structure is used for efficient matching.
 
 ## Features
-**Zero Garbage:** The matching and dispatching process generates zero bytes of
-garbage. In fact, the only heap allocations that are made, is by building the
-slice of the key-value pairs for path parameters. If the request path contains
-no parameters, not a single heap allocation is necessary.
-
-**Best Performance:** [Benchmarks speak for themselves](https://github.com/julienschmidt/go-http-routing-benchmark).
-See below for technical details of the implementation.
-
-**Parameters in your routing pattern:** Stop parsing the requested URL path,
-just give the path segment a name and the router delivers the dynamic value to
-you. Because of the design of the router, path parameters are very cheap.
-
 **Only explicit matches:** With other routers, like [http.ServeMux](http://golang.org/pkg/net/http/#ServeMux),
 a requested URL path could match multiple patterns. Therefore they have some
 awkward pattern priority rules, like *longest match* or *first registered,
@@ -42,6 +30,18 @@ superfluous path elements (like `../` or `//`).
 Is [CAPTAIN CAPS LOCK](http://www.urbandictionary.com/define.php?term=Captain+Caps+Lock) one of your users?
 HttpRouter can help him by making a case-insensitive look-up and redirecting him
 to the correct URL.
+
+**Parameters in your routing pattern:** Stop parsing the requested URL path,
+just give the path segment a name and the router delivers the dynamic value to
+you. Because of the design of the router, path parameters are very cheap.
+
+**Zero Garbage:** The matching and dispatching process generates zero bytes of
+garbage. In fact, the only heap allocations that are made, is by building the
+slice of the key-value pairs for path parameters. If the request path contains
+no parameters, not a single heap allocation is necessary.
+
+**Best Performance:** [Benchmarks speak for themselves](https://github.com/julienschmidt/go-http-routing-benchmark).
+See below for technical details of the implementation.
 
 **No more server crashes:** You can set a PanicHandler to deal with panics
 occurring during handling a HTTP request. The router then recovers and lets the
@@ -189,7 +189,7 @@ for example the [Gorilla handlers](http://www.gorillatoolkit.org/pkg/handlers).
 Or you could [just write your own](http://justinas.org/writing-http-middleware-in-go/),
 it's very easy!
 
-Alternatively, you could try [a framework building upon HttpRouter](#web-frameworks--co-based-on-httprouter).
+Alternatively, you could try [a web framework based on HttpRouter](#web-frameworks-based-on-httprouter).
 
 ### Multi-domain / Sub-domains
 Here is a quick example: Does your server serve multiple domains / hosts?
@@ -305,7 +305,7 @@ router.NotFound = http.FileServer(http.Dir("public")).ServeHTTP
 
 But this approach sidesteps the strict core rules of this router to avoid routing problems. A cleaner approach is to use a distinct sub-path for serving files, like `/static/*filepath` or `/files/*filepath`.
 
-## Web Frameworks & Co based on HttpRouter
+## Web Frameworks based on HttpRouter
 If the HttpRouter is a bit too minimalistic for you, you might try one of the following more high-level 3rd-party web frameworks building upon the HttpRouter package:
 * [Ace](https://github.com/plimble/ace): Blazing fast Go Web Framework
 * [api2go](https://github.com/univedo/api2go): A JSON API Implementation for Go
