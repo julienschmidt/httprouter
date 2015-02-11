@@ -22,7 +22,7 @@ great for SEO and improves the user experience.
 **Stop caring about trailing slashes:** Choose the URL style you like, the
 router automatically redirects the client if a trailing slash is missing or if
 there is one extra. Of course it only does so, if the new path has a handler.
-If you don't like it, you can turn off this behavior.
+If you don't like it, you can [turn off this behavior](http://godoc.org/github.com/julienschmidt/httprouter#Router.RedirectTrailingSlash).
 
 **Path auto-correction:** Besides detecting the missing or additional trailing
 slash at no extra cost, the router can also fix wrong cases and remove
@@ -43,11 +43,11 @@ no parameters, not a single heap allocation is necessary.
 **Best Performance:** [Benchmarks speak for themselves](https://github.com/julienschmidt/go-http-routing-benchmark).
 See below for technical details of the implementation.
 
-**No more server crashes:** You can set a PanicHandler to deal with panics
+**No more server crashes:** You can set a [Panic handler](http://godoc.org/github.com/julienschmidt/httprouter#Router.PanicHandler) to deal with panics
 occurring during handling a HTTP request. The router then recovers and lets the
 PanicHandler log what happened and deliver a nice error page.
 
-Of course you can also set a **custom NotFound handler** and **serve static files**.
+Of course you can also set **custom [NotFound](http://godoc.org/github.com/julienschmidt/httprouter#Router.NotFound) and  [MethodNotAllowed](http://godoc.org/github.com/julienschmidt/httprouter#Router.MethodNotAllowed) handlers** and [**serve static files**](http://godoc.org/github.com/julienschmidt/httprouter#Router.ServeFiles).
 
 ## Usage
 This is just a quick introduction, view the [GoDoc](http://godoc.org/github.com/julienschmidt/httprouter) for details.
