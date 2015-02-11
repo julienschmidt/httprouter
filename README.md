@@ -308,6 +308,7 @@ But this approach sidesteps the strict core rules of this router to avoid routin
 ## Web Frameworks & Co based on HttpRouter
 If the HttpRouter is a bit too minimalistic for you, you might try one of the following more high-level 3rd-party web frameworks building upon the HttpRouter package:
 * [Ace](https://github.com/plimble/ace): Blazing fast Go Web Framework
+* [api2go](https://github.com/univedo/api2go): A JSON API Implementation for Go
 * [Gin](https://github.com/gin-gonic/gin): Features a martini-like API with much better performance
 * [Hikaru](https://github.com/najeira/hikaru): Supports standalone and Google AppEngine
 * [Hitch](https://github.com/nbio/hitch): Hitch ties httprouter, [httpcontext](https://github.com/nbio/httpcontext), and middleware up in a bow
