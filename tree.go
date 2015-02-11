@@ -186,7 +186,7 @@ func (n *node) addRoute(path string, handle Handle) {
 }
 
 func (n *node) insertChild(numParams uint8, path string, handle Handle) {
-	var offset int
+	var offset int // already handled bytes of the path
 
 	// find prefix until first wildcard (beginning with ':'' or '*'')
 	for i, max := 0, len(path); numParams > 0; i++ {
@@ -195,7 +195,7 @@ func (n *node) insertChild(numParams uint8, path string, handle Handle) {
 			continue
 		}
 
-		// Check if this Node existing children which would be
+		// check if this Node existing children which would be
 		// unreachable if we insert the wildcard here
 		if len(n.children) > 0 {
 			panic("wildcard route conflicts with existing children")
@@ -204,9 +204,16 @@ func (n *node) insertChild(numParams uint8, path string, handle Handle) {
 		// find wildcard end (either '/' or path end)
 		end := i + 1
 		for end < max && path[end] != '/' {
-			end++
+			switch path[end] {
+			// the wildcard name must not contain ':' and '*'
+			case ':', '*':
+				panic("only one wildcard per path segment is allowed")
+			default:
+				end++
+			}
 		}
 
+		// check if the wildcard has a name
 		if end-i < 2 {
 			panic("wildcards must be named with a non-empty name")
 		}
