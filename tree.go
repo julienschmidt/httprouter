@@ -43,30 +43,36 @@ type node struct {
 	wildChild bool
 	nType     nodeType
 	maxParams uint8
-	indices   []byte
+	indices   string
 	children  []*node
 	handle    Handle
 	priority  uint32
 }
 
 // increments priority of the given child and reorders if necessary
-func (n *node) incrementChildPrio(i int) int {
-	n.children[i].priority++
-	prio := n.children[i].priority
+func (n *node) incrementChildPrio(pos int) int {
+	n.children[pos].priority++
+	prio := n.children[pos].priority
 
 	// adjust position (move to front)
-	for j := i - 1; j >= 0 && n.children[j].priority < prio; j-- {
+	newPos := pos
+	for newPos > 0 && n.children[newPos-1].priority < prio {
 		// swap node positions
-		tmpN := n.children[j]
-		n.children[j] = n.children[i]
-		n.children[i] = tmpN
-		tmpI := n.indices[j]
-		n.indices[j] = n.indices[i]
-		n.indices[i] = tmpI
+		tmpN := n.children[newPos-1]
+		n.children[newPos-1] = n.children[newPos]
+		n.children[newPos] = tmpN
 
-		i--
+		newPos--
 	}
-	return i
+
+	// build new index char string
+	if newPos != pos {
+		n.indices = n.indices[:newPos] + // unchanged prefix, might be empty
+			n.indices[pos:pos+1] + // the index char we move
+			n.indices[newPos:pos] + n.indices[pos+1:] // rest without char at 'pos'
+	}
+
+	return newPos
 }
 
 // addRoute adds a node with the given handle to the path.
@@ -110,7 +116,7 @@ func (n *node) addRoute(path string, handle Handle) {
 				}
 
 				n.children = []*node{&child}
-				n.indices = []byte{n.path[i]}
+				n.indices = string(n.path[i])
 				n.path = path[:i]
 				n.handle = nil
 				n.wildChild = false
@@ -151,8 +157,8 @@ func (n *node) addRoute(path string, handle Handle) {
 				}
 
 				// Check if a child with the next path byte exists
-				for i, index := range n.indices {
-					if c == index {
+				for i := 0; i < len(n.indices); i++ {
+					if c == n.indices[i] {
 						i = n.incrementChildPrio(i)
 						n = n.children[i]
 						continue WALK
@@ -161,7 +167,7 @@ func (n *node) addRoute(path string, handle Handle) {
 
 				// Otherwise insert it
 				if c != ':' && c != '*' {
-					n.indices = append(n.indices, c)
+					n.indices += string(c)
 					child := &node{
 						maxParams: numParams,
 					}
@@ -273,7 +279,7 @@ func (n *node) insertChild(numParams uint8, path string, handle Handle) {
 				maxParams: 1,
 			}
 			n.children = []*node{child}
-			n.indices = []byte{path[i]}
+			n.indices = string(path[i])
 			n = child
 			n.priority++
 
@@ -312,8 +318,8 @@ walk: // Outer loop for walking the tree
 				// to walk down the tree
 				if !n.wildChild {
 					c := path[0]
-					for i, index := range n.indices {
-						if c == index {
+					for i := 0; i < len(n.indices); i++ {
+						if c == n.indices[i] {
 							n = n.children[i]
 							continue walk
 						}
@@ -398,10 +404,10 @@ walk: // Outer loop for walking the tree
 
 			// No handle found. Check if a handle for this path + a
 			// trailing slash exists for trailing slash recommendation
-			for i, index := range n.indices {
-				if index == '/' {
+			for i := 0; i < len(n.indices); i++ {
+				if n.indices[i] == '/' {
 					n = n.children[i]
-					tsr = (n.path == "/" && n.handle != nil) ||
+					tsr = (len(n.path) == 1 && n.handle != nil) ||
 						(n.nType == catchAll && n.children[0].handle != nil)
 					return
 				}
@@ -440,7 +446,7 @@ func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPa
 				for i, index := range n.indices {
 					// must use recursive approach since both index and
 					// ToLower(index) could exist. We must check both.
-					if r == unicode.ToLower(rune(index)) {
+					if r == unicode.ToLower(index) {
 						out, found := n.children[i].findCaseInsensitivePath(path, fixTrailingSlash)
 						if found {
 							return append(ciPath, out...), true
@@ -509,10 +515,10 @@ func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPa
 			// No handle found.
 			// Try to fix the path by adding a trailing slash
 			if fixTrailingSlash {
-				for i, index := range n.indices {
-					if index == '/' {
+				for i := 0; i < len(n.indices); i++ {
+					if n.indices[i] == '/' {
 						n = n.children[i]
-						if (n.path == "/" && n.handle != nil) ||
+						if (len(n.path) == 1 && n.handle != nil) ||
 							(n.nType == catchAll && n.children[0].handle != nil) {
 							return append(ciPath, '/'), true
 						}
