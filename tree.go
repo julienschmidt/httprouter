@@ -83,7 +83,7 @@ func (n *node) addRoute(path string, handle Handle) {
 
 	// non-empty tree
 	if len(n.path) > 0 || len(n.children) > 0 {
-	WALK:
+	walk:
 		for {
 			// Update maxParams of the current node
 			if numParams > n.maxParams {
@@ -91,10 +91,12 @@ func (n *node) addRoute(path string, handle Handle) {
 			}
 
 			// Find the longest common prefix.
-			// This also implies that the commom prefix contains no ':' or '*'
-			// since the existing key can't contain this chars.
+			// This also implies that the common prefix contains no ':' or '*'
+			// since the existing key can't contain those chars.
 			i := 0
-			for max := min(len(path), len(n.path)); i < max && path[i] == n.path[i]; i++ {
+			max := min(len(path), len(n.path))
+			for i < max && path[i] == n.path[i] {
+				i++
 			}
 
 			// Split edge
@@ -140,7 +142,7 @@ func (n *node) addRoute(path string, handle Handle) {
 					if len(path) >= len(n.path) && n.path == path[:len(n.path)] {
 						// check for longer wildcard, e.g. :name and :names
 						if len(n.path) >= len(path) || path[len(n.path)] == '/' {
-							continue WALK
+							continue walk
 						}
 					}
 
@@ -153,7 +155,7 @@ func (n *node) addRoute(path string, handle Handle) {
 				if n.nType == param && c == '/' && len(n.children) == 1 {
 					n = n.children[0]
 					n.priority++
-					continue WALK
+					continue walk
 				}
 
 				// Check if a child with the next path byte exists
@@ -161,7 +163,7 @@ func (n *node) addRoute(path string, handle Handle) {
 					if c == n.indices[i] {
 						i = n.incrementChildPrio(i)
 						n = n.children[i]
-						continue WALK
+						continue walk
 					}
 				}
 
@@ -427,7 +429,7 @@ walk: // Outer loop for walking the tree
 
 // Makes a case-insensitive lookup of the given path and tries to find a handler.
 // It can optionally also fix trailing slashes.
-// It returns the case-corrected path and a bool indicating wether the lookup
+// It returns the case-corrected path and a bool indicating whether the lookup
 // was successful.
 func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPath []byte, found bool) {
 	ciPath = make([]byte, 0, len(path)+1) // preallocate enough memory
