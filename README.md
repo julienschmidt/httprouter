@@ -310,6 +310,7 @@ If the HttpRouter is a bit too minimalistic for you, you might try one of the fo
 * [Ace](https://github.com/plimble/ace): Blazing fast Go Web Framework
 * [api2go](https://github.com/univedo/api2go): A JSON API Implementation for Go
 * [Gin](https://github.com/gin-gonic/gin): Features a martini-like API with much better performance
+* [Goat](https://github.com/bahlo/goat): A minimalistic REST API server in Go
 * [Hikaru](https://github.com/najeira/hikaru): Supports standalone and Google AppEngine
 * [Hitch](https://github.com/nbio/hitch): Hitch ties httprouter, [httpcontext](https://github.com/nbio/httpcontext), and middleware up in a bow
 * [kami](https://github.com/guregu/kami): A tiny web framework using x/net/context
