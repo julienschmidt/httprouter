@@ -112,7 +112,7 @@ type Router struct {
 
 	// If enabled, routing will always use the original request path, not the
 	// unescaped one. For example if a /users/:user handler is used and
-	// /users/foo%2fbar is requested, the handler will be called with user=foo/bar
+	// /users/foo%2fbar is requested, the handler will be called with user=foo%2fbar
 	// but if this option is disabled, /users/foo/bar will be looked up instead.
 	RawPathRouting bool
 
