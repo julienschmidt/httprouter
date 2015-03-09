@@ -198,6 +198,16 @@ func (r *Router) DELETE(path string, handle Handle) {
 	r.Handle("DELETE", path, handle)
 }
 
+// ALL is a shortcut for handling all RESTful methods
+func (r *Router) ALL(path string, handle Handle) {
+	r.Handle("GET", path, handle)
+	r.Handle("HEAD", path, handle)
+	r.Handle("POST", path, handle)
+	r.Handle("PUT", path, handle)
+	r.Handle("PATCH", path, handle)
+	r.Handle("DELETE", path, handle)
+}
+
 // Handle registers a new request handle with the given path and method.
 //
 // For GET, POST, PUT, PATCH and DELETE requests the respective shortcut
