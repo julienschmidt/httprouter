@@ -118,7 +118,7 @@ func (n *node) addRoute(path string, handle Handle) {
 				}
 
 				n.children = []*node{&child}
-				n.indices = string(n.path[i])
+				n.indices = string([]byte{n.path[i]})
 				n.path = path[:i]
 				n.handle = nil
 				n.wildChild = false
@@ -169,7 +169,7 @@ func (n *node) addRoute(path string, handle Handle) {
 
 				// Otherwise insert it
 				if c != ':' && c != '*' {
-					n.indices += string(c)
+					n.indices += string([]byte{c})
 					child := &node{
 						maxParams: numParams,
 					}
