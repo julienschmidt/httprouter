@@ -76,9 +76,7 @@
 //  thirdValue := ps[2].Value // the value of the 3rd parameter
 package httprouter
 
-import (
-	"net/http"
-)
+import "net/http"
 
 // Handle is a function that can be registered to a route to handle HTTP
 // requests. Like http.HandlerFunc, but has a third parameter for the values of
@@ -111,6 +109,12 @@ func (ps Params) ByName(name string) string {
 // handler functions via configurable routes
 type Router struct {
 	trees map[string]*node
+
+	// If enabled, routing will always use the original request path, not the
+	// unescaped one. For example if a /users/:user handler is used and
+	// /users/foo%2fbar is requested, the handler will be called with user=foo%2fbar
+	// but if this option is disabled, /users/foo/bar will be looked up instead.
+	RawPathRouting bool
 
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
@@ -269,6 +273,22 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (r *Router) requestPath(req *http.Request) string {
+	if !r.RawPathRouting {
+		return req.URL.Path
+	}
+	path := req.RequestURI
+	pathLen := len(path)
+	if pathLen <= 0 {
+		return path
+	}
+	rawQueryLen := len(req.URL.RawQuery)
+	if rawQueryLen == 0 && path[pathLen-1] != '?' {
+		return path
+	}
+	return path[:pathLen-rawQueryLen-1]
+}
+
 // Lookup allows the manual lookup of a method + path combo.
 // This is e.g. useful to build a framework around this router.
 // If the path was found, it returns the handle function and the path parameter
@@ -288,7 +308,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if root := r.trees[req.Method]; root != nil {
-		path := req.URL.Path
+		path := r.requestPath(req)
 
 		if handle, ps, tsr := root.getValue(path); handle != nil {
 			handle(w, req, ps)
@@ -303,11 +323,11 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 			if tsr && r.RedirectTrailingSlash {
 				if len(path) > 1 && path[len(path)-1] == '/' {
-					req.URL.Path = path[:len(path)-1]
+					path = path[:len(path)-1]
 				} else {
-					req.URL.Path = path + "/"
+					path = path + "/"
 				}
-				http.Redirect(w, req, req.URL.String(), code)
+				http.Redirect(w, req, path, code)
 				return
 			}
 
@@ -318,8 +338,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					r.RedirectTrailingSlash,
 				)
 				if found {
-					req.URL.Path = string(fixedPath)
-					http.Redirect(w, req, req.URL.String(), code)
+					path = string(fixedPath)
+					http.Redirect(w, req, path, code)
 					return
 				}
 			}
@@ -334,7 +354,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				continue
 			}
 
-			handle, _, _ := r.trees[method].getValue(req.URL.Path)
+			path := r.requestPath(req)
+			handle, _, _ := r.trees[method].getValue(path)
 			if handle != nil {
 				if r.MethodNotAllowed != nil {
 					r.MethodNotAllowed(w, req)
