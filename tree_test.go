@@ -125,6 +125,8 @@ func TestTreeAddAndGet(t *testing.T) {
 		"/doc/",
 		"/doc/go_faq.html",
 		"/doc/go1.html",
+		"/α",
+		"/β",
 	}
 	for _, route := range routes {
 		tree.addRoute(route, fakeHandler(route))
@@ -142,6 +144,8 @@ func TestTreeAddAndGet(t *testing.T) {
 		{"/cona", true, "", nil}, // key mismatch
 		{"/no", true, "", nil},   // no matching child
 		{"/ab", false, "/ab", nil},
+		{"/α", false, "/α", nil},
+		{"/β", false, "/β", nil},
 	})
 
 	checkPriorities(t, tree)
