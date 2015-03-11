@@ -237,11 +237,7 @@ func (r *Router) Handler(method, path string, handler http.Handler) {
 // HandlerFunc is an adapter which allows the usage of an http.HandlerFunc as a
 // request handle.
 func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
-	r.Handle(method, path,
-		func(w http.ResponseWriter, req *http.Request, _ Params) {
-			handler(w, req)
-		},
-	)
+	r.Handler(method, path, handler)
 }
 
 // ServeFiles serves files from the given file system root.
