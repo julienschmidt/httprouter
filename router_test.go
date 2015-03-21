@@ -123,7 +123,7 @@ func TestRouterAPI(t *testing.T) {
 
 	r, _ = http.NewRequest("OPTIONS", "/GET", nil)
 	router.ServeHTTP(w, r)
-	if !head {
+	if !options {
 		t.Error("routing OPTIONS failed")
 	}
 
