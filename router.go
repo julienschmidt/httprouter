@@ -178,6 +178,11 @@ func (r *Router) HEAD(path string, handle Handle) {
 	r.Handle("HEAD", path, handle)
 }
 
+// OPTIONS is a shortcut for router.Handle("OPTIONS", path, handle)
+func (r *Router) OPTIONS(path string, handle Handle) {
+	r.Handle("OPTIONS", path, handle)
+}
+
 // POST is a shortcut for router.Handle("POST", path, handle)
 func (r *Router) POST(path string, handle Handle) {
 	r.Handle("POST", path, handle)
