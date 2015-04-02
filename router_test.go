@@ -76,7 +76,7 @@ func (h handlerStruct) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestRouterAPI(t *testing.T) {
-	var get, head, options, post, put, patch, delete, handler, handlerFunc bool
+	var get, head, options, post, put, patch, delete, handler, handlerFunc, anyGet, anyOther bool
 
 	httpHandler := handlerStruct{&handler}
 
@@ -105,6 +105,12 @@ func TestRouterAPI(t *testing.T) {
 	router.Handler("GET", "/Handler", httpHandler)
 	router.HandlerFunc("GET", "/HandlerFunc", func(w http.ResponseWriter, r *http.Request) {
 		handlerFunc = true
+	})
+	router.Handle("GET", "/Any", func(w http.ResponseWriter, r *http.Request, _ Params) {
+		anyGet = true
+	})
+	router.Handle("*", "/Any", func(w http.ResponseWriter, r *http.Request, _ Params) {
+		anyOther = true
 	})
 
 	w := new(mockResponseWriter)
@@ -161,6 +167,18 @@ func TestRouterAPI(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !handlerFunc {
 		t.Error("routing HandlerFunc failed")
+	}
+
+	r, _ = http.NewRequest("GET", "/Any", nil)
+	router.ServeHTTP(w, r)
+	if !anyGet {
+		t.Error("routing GET to Any failed")
+	}
+
+	r, _ = http.NewRequest("POST", "/Any", nil)
+	router.ServeHTTP(w, r)
+	if !anyOther {
+		t.Error("routing POST to Any failed")
 	}
 }
 
