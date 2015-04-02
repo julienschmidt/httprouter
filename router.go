@@ -293,7 +293,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Try using a handler for the request method, falling back to an any
-	handler, if provided.
+	// handler, if provided.
 	if r.serveMethod(req.Method, w, req) || r.serveMethod("*", w, req) {
 		return
 	}
