@@ -7,6 +7,7 @@ package httprouter
 import (
 	"strings"
 	"unicode"
+	"fmt"
 )
 
 func min(a, b int) int {
@@ -147,7 +148,7 @@ func (n *node) addRoute(path string, handle Handle) {
 						}
 					}
 
-					panic("conflict with wildcard route")
+					panic(fmt.Sprintf("conflict with wildcard route. has %q got %q", path, n.path))
 				}
 
 				c := path[0]
@@ -184,7 +185,7 @@ func (n *node) addRoute(path string, handle Handle) {
 
 			} else if i == len(path) { // Make node a (in-path) leaf
 				if n.handle != nil {
-					panic("a Handle is already registered for this path")
+					panic(fmt.Sprintf("a Handle is already registered for this path (%q)", path))
 				}
 				n.handle = handle
 			}
