@@ -213,7 +213,7 @@ func (r *Router) DELETE(path string, handle Handle) {
 // communication with a proxy).
 func (r *Router) Handle(method, path string, handle Handle) {
 	if path[0] != '/' {
-		panic("path must begin with '/'")
+		panic("path must begin with '/' in path '" + path + "'")
 	}
 
 	if r.trees == nil {
@@ -257,7 +257,7 @@ func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
 //     router.ServeFiles("/src/*filepath", http.Dir("/var/www"))
 func (r *Router) ServeFiles(path string, root http.FileSystem) {
 	if len(path) < 10 || path[len(path)-10:] != "/*filepath" {
-		panic("path must end with /*filepath")
+		panic("path must end with /*filepath in path '" + path + "'")
 	}
 
 	fileServer := http.FileServer(root)

@@ -358,7 +358,7 @@ func TestTreeDoubleWildcard(t *testing.T) {
 			tree.addRoute(route, nil)
 		})
 
-		if rs, ok := recv.(string); !ok || rs != panicMsg {
+		if rs, ok := recv.(string); !ok || !strings.HasPrefix(rs, panicMsg) {
 			t.Fatalf(`"Expected panic "%s" for route '%s', got "%v"`, panicMsg, route, recv)
 		}
 	}
@@ -584,6 +584,8 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 }
 
 func TestTreeInvalidNodeType(t *testing.T) {
+	const panicMsg = "invalid node type"
+
 	tree := &node{}
 	tree.addRoute("/", fakeHandler("/"))
 	tree.addRoute("/:page", fakeHandler("/:page"))
@@ -595,15 +597,15 @@ func TestTreeInvalidNodeType(t *testing.T) {
 	recv := catchPanic(func() {
 		tree.getValue("/test")
 	})
-	if rs, ok := recv.(string); !ok || rs != "Invalid node type" {
-		t.Fatalf(`Expected panic "Invalid node type", got "%v"`, recv)
+	if rs, ok := recv.(string); !ok || rs != panicMsg {
+		t.Fatalf("Expected panic '"+panicMsg+"', got '%v'", recv)
 	}
 
 	// case-insensitive lookup
 	recv = catchPanic(func() {
 		tree.findCaseInsensitivePath("/test", true)
 	})
-	if rs, ok := recv.(string); !ok || rs != "Invalid node type" {
-		t.Fatalf(`Expected panic "Invalid node type", got "%v"`, recv)
+	if rs, ok := recv.(string); !ok || rs != panicMsg {
+		t.Fatalf("Expected panic '"+panicMsg+"', got '%v'", recv)
 	}
 }
