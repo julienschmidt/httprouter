@@ -78,6 +78,7 @@ package httprouter
 
 import (
 	"net/http"
+	"sync"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
@@ -111,6 +112,9 @@ func (ps Params) ByName(name string) string {
 // handler functions via configurable routes
 type Router struct {
 	trees map[string]*node
+
+	// pool to recycle Param slices
+	psPool sync.Pool
 
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
@@ -165,6 +169,24 @@ func New() *Router {
 		RedirectTrailingSlash:  true,
 		RedirectFixedPath:      true,
 		HandleMethodNotAllowed: true,
+	}
+}
+
+func (r *Router) paramsGet() *Params {
+	if vp := r.psPool.Get(); vp != nil {
+		psp := vp.(*Params)
+		*psp = (*psp)[0:0] // reset slice
+		return psp
+	}
+
+	// Allocate new slice if none is available
+	ps := make(Params, 0, 20) // TODO
+	return &ps
+}
+
+func (r *Router) paramsRecycle(psp *Params) {
+	if psp != nil {
+		r.psPool.Put(psp)
 	}
 }
 
@@ -281,7 +303,13 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 // the same path with an extra / without the trailing slash should be performed.
 func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
 	if root := r.trees[method]; root != nil {
-		return root.getValue(path)
+		psp := r.paramsGet()
+		h, tsr := root.getValue(path, psp) // TODO
+		if h != nil {
+			return h, *psp, tsr
+		}
+		r.paramsRecycle(psp)
+		return nil, nil, tsr
 	}
 	return nil, nil, false
 }
@@ -294,38 +322,43 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if root := r.trees[req.Method]; root != nil {
 		path := req.URL.Path
-
-		if handle, ps, tsr := root.getValue(path); handle != nil {
-			handle(w, req, ps)
+		psp := r.paramsGet()
+		if handle, tsr := root.getValue(path, psp); handle != nil {
+			handle(w, req, *psp)
+			r.paramsRecycle(psp)
 			return
-		} else if req.Method != "CONNECT" && path != "/" {
-			code := 301 // Permanent redirect, request with GET method
-			if req.Method != "GET" {
-				// Temporary redirect, request with same method
-				// As of Go 1.3, Go does not support status code 308.
-				code = 307
-			}
+		} else {
+			r.paramsRecycle(psp)
 
-			if tsr && r.RedirectTrailingSlash {
-				if len(path) > 1 && path[len(path)-1] == '/' {
-					req.URL.Path = path[:len(path)-1]
-				} else {
-					req.URL.Path = path + "/"
+			if req.Method != "CONNECT" && path != "/" {
+				code := 301 // Permanent redirect, request with GET method
+				if req.Method != "GET" {
+					// Temporary redirect, request with same method
+					// As of Go 1.3, Go does not support status code 308.
+					code = 307
 				}
-				http.Redirect(w, req, req.URL.String(), code)
-				return
-			}
 
-			// Try to fix the request path
-			if r.RedirectFixedPath {
-				fixedPath, found := root.findCaseInsensitivePath(
-					CleanPath(path),
-					r.RedirectTrailingSlash,
-				)
-				if found {
-					req.URL.Path = string(fixedPath)
+				if tsr && r.RedirectTrailingSlash {
+					if len(path) > 1 && path[len(path)-1] == '/' {
+						req.URL.Path = path[:len(path)-1]
+					} else {
+						req.URL.Path = path + "/"
+					}
 					http.Redirect(w, req, req.URL.String(), code)
 					return
+				}
+
+				// Try to fix the request path
+				if r.RedirectFixedPath {
+					fixedPath, found := root.findCaseInsensitivePath(
+						CleanPath(path),
+						r.RedirectTrailingSlash,
+					)
+					if found {
+						req.URL.Path = string(fixedPath)
+						http.Redirect(w, req, req.URL.String(), code)
+						return
+					}
 				}
 			}
 		}
@@ -339,7 +372,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				continue
 			}
 
-			handle, _, _ := r.trees[method].getValue(req.URL.Path)
+			handle, _ := r.trees[method].getValue(req.URL.Path, nil)
 			if handle != nil {
 				if r.MethodNotAllowed != nil {
 					r.MethodNotAllowed(w, req)

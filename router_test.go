@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -49,9 +50,9 @@ func TestRouter(t *testing.T) {
 	router := New()
 
 	routed := false
+	want := Params{Param{"name", "gopher"}}
 	router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, ps Params) {
 		routed = true
-		want := Params{Param{"name", "gopher"}}
 		if !reflect.DeepEqual(ps, want) {
 			t.Fatalf("wrong wildcard values: want %v, got %v", want, ps)
 		}
@@ -64,6 +65,42 @@ func TestRouter(t *testing.T) {
 
 	if !routed {
 		t.Fatal("routing failed")
+	}
+}
+
+func TestRouterZeroAlloc(t *testing.T) {
+	runs := 1000
+	m := new(runtime.MemStats)
+
+	router := New()
+	router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, ps Params) {
+		if val := ps.ByName("name"); val != "gordon" {
+			t.Errorf("Expected param value 'gordon', got '%s'", val)
+		}
+	})
+	r, _ := http.NewRequest("GET", "/user/gordon", nil)
+
+	w := new(mockResponseWriter)
+	u := r.URL
+	rq := u.RawQuery
+	r.RequestURI = u.RequestURI()
+
+	// before
+	runtime.GC()
+	runtime.ReadMemStats(m)
+	mallocs := 0 - m.Mallocs
+
+	for i := 0; i < runs; i++ {
+		u.RawQuery = rq
+		router.ServeHTTP(w, r)
+	}
+
+	// after
+	runtime.ReadMemStats(m)
+	mallocs += m.Mallocs
+
+	if aa := int(mallocs / uint64(runs)); aa > 0 {
+		t.Fatalf("Amortized allocations: %d", aa)
 	}
 }
 
