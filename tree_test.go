@@ -15,7 +15,7 @@ import (
 func printChildren(n *node, prefix string) {
 	indices := n.pfx[:len(n.children)]
 	path := n.pfx[len(n.children):]
-	fmt.Printf(" %02d:%02d %s%s [%d:%s] %v %t %d \r\n", n.priority, n.maxParams, prefix, path, len(n.children), indices, n.handle, n.wildChild, n.nType)
+	fmt.Printf(" %02d %s%s [%d:%s] %v %t %d \r\n", n.priority, prefix, path, len(n.children), indices, n.handle, n.wildChild, n.nType)
 	for l := len(path); l > 0; l-- {
 		prefix += " "
 	}
@@ -89,33 +89,11 @@ func checkPriorities(t *testing.T, n *node) uint32 {
 	return prio
 }
 
-func checkMaxParams(t *testing.T, n *node) uint8 {
-	var maxParams uint8
-	for i := range n.children {
-		params := checkMaxParams(t, n.children[i])
-		if params > maxParams {
-			maxParams = params
-		}
-	}
-	if n.nType != static && !n.wildChild {
-		maxParams++
-	}
-
-	if n.maxParams != maxParams {
-		t.Errorf(
-			"maxParams mismatch for node '%s': is %d, should be %d",
-			n.pfx[:len(n.children)], n.maxParams, maxParams,
-		)
-	}
-
-	return maxParams
-}
-
 func TestCountParams(t *testing.T) {
 	if countParams("/path/:param1/static/*catch-all") != 2 {
 		t.Fail()
 	}
-	if countParams(strings.Repeat("/:param", 256)) != 255 {
+	if countParams(strings.Repeat("/:param", 256)) != 256 {
 		t.Fail()
 	}
 }
@@ -157,7 +135,6 @@ func TestTreeAddAndGet(t *testing.T) {
 	})
 
 	checkPriorities(t, tree)
-	checkMaxParams(t, tree)
 }
 
 func TestTreeWildcard(t *testing.T) {
@@ -203,7 +180,6 @@ func TestTreeWildcard(t *testing.T) {
 	})
 
 	checkPriorities(t, tree)
-	checkMaxParams(t, tree)
 }
 
 func catchPanic(testFunc func()) (recv interface{}) {

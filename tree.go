@@ -13,18 +13,14 @@ func min(a, b int) int {
 	return b
 }
 
-func countParams(path string) uint8 {
-	var n uint
+func countParams(path string) (n int) {
 	for i := 0; i < len(path); i++ {
 		if path[i] != ':' && path[i] != '*' {
 			continue
 		}
 		n++
 	}
-	if n >= 255 {
-		return 255
-	}
-	return uint8(n)
+	return n
 }
 
 func toLower(b byte) byte {
@@ -46,7 +42,6 @@ type node struct {
 	pfx       string // first len(children) bytes are indices, rest is path prefix
 	wildChild bool
 	nType     nodeType
-	maxParams uint8
 	priority  uint32
 	children  []*node
 	handle    Handle
@@ -83,18 +78,12 @@ func (n *node) incrementChildPrio(pos int) int {
 func (n *node) addRoute(path string, handle Handle) {
 	fullPath := path
 	n.priority++
-	numParams := countParams(path)
 
 	// non-empty tree
 	if len(n.pfx) > 0 {
 		prefix := n.pfx[len(n.children):]
 	walk:
 		for {
-			// Update maxParams of the current node
-			if numParams > n.maxParams {
-				n.maxParams = numParams
-			}
-
 			// Find the longest common prefix.
 			// This also implies that the common prefix contains no ':' or '*'
 			// since the existing key can't contain those chars.
@@ -109,16 +98,9 @@ func (n *node) addRoute(path string, handle Handle) {
 				child := node{
 					pfx:       n.pfx[:len(n.children)] + prefix[i:],
 					wildChild: n.wildChild,
+					priority:  n.priority - 1,
 					children:  n.children,
 					handle:    n.handle,
-					priority:  n.priority - 1,
-				}
-
-				// Update maxParams (max of all children)
-				for i := range child.children {
-					if child.children[i].maxParams > child.maxParams {
-						child.maxParams = child.children[i].maxParams
-					}
 				}
 
 				n.children = []*node{&child}
@@ -136,12 +118,6 @@ func (n *node) addRoute(path string, handle Handle) {
 					n = n.children[0]
 					n.priority++
 					prefix = n.pfx[len(n.children):]
-
-					// Update maxParams of the child node
-					if numParams > n.maxParams {
-						n.maxParams = numParams
-					}
-					numParams--
 
 					// Check if the wildcard matches
 					if len(path) >= len(prefix) && prefix == path[:len(prefix)] {
@@ -180,14 +156,12 @@ func (n *node) addRoute(path string, handle Handle) {
 				if c != ':' && c != '*' {
 					// []byte for proper unicode char conversion, see #65
 					n.pfx = n.pfx[:len(n.children)] + string([]byte{c}) + n.pfx[len(n.children):]
-					child := &node{
-						maxParams: numParams,
-					}
+					child := new(node)
 					n.children = append(n.children, child)
 					n.incrementChildPrio(len(n.children) - 1)
 					n = child
 				}
-				n.insertChild(numParams, path, fullPath, handle)
+				n.insertChild(path, fullPath, handle)
 				return
 
 			} else if i == len(path) { // Make node a (in-path) leaf
@@ -199,15 +173,15 @@ func (n *node) addRoute(path string, handle Handle) {
 			return
 		}
 	} else { // Empty tree
-		n.insertChild(numParams, path, fullPath, handle)
+		n.insertChild(path, fullPath, handle)
 	}
 }
 
-func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle) {
+func (n *node) insertChild(path, fullPath string, handle Handle) {
 	var offset int // already handled bytes of the path
 
 	// find prefix until first wildcard (beginning with ':'' or '*'')
-	for i, max := 0, len(path); numParams > 0; i++ {
+	for i, max := 0, len(path); i < max; i++ {
 		c := path[i]
 		if c != ':' && c != '*' {
 			continue
@@ -248,14 +222,12 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 			}
 
 			child := &node{
-				nType:     param,
-				maxParams: numParams,
+				nType: param,
 			}
 			n.children = []*node{child}
 			n.wildChild = true
 			n = child
 			n.priority++
-			numParams--
 
 			// if the path doesn't end with the wildcard, then there
 			// will be another non-wildcard subpath starting with '/'
@@ -264,15 +236,14 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 				offset = end
 
 				child := &node{
-					maxParams: numParams,
-					priority:  1,
+					priority: 1,
 				}
 				n.children = []*node{child}
 				n = child
 			}
 
 		} else { // catchAll
-			if end != max || numParams > 1 {
+			if end != max {
 				panic("catch-all routes are only allowed at the end of the path in path '" + fullPath + "'")
 			}
 
@@ -293,7 +264,6 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 				pfx:       "/",
 				wildChild: true,
 				nType:     catchAll,
-				maxParams: 1,
 			}
 			n.children = []*node{child}
 			n = child
@@ -301,11 +271,10 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 
 			// second node: node holding the variable
 			child = &node{
-				pfx:       path[i:],
-				nType:     catchAll,
-				maxParams: 1,
-				handle:    handle,
-				priority:  1,
+				pfx:      path[i:],
+				nType:    catchAll,
+				priority: 1,
+				handle:   handle,
 			}
 			n.children = []*node{child}
 

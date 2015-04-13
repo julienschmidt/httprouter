@@ -116,6 +116,9 @@ type Router struct {
 	// pool to recycle Param slices
 	psPool sync.Pool
 
+	// max number of params any of the pathes contains
+	maxParams int
+
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
 	// For example if /foo/ is requested but a route only exists for /foo, the
@@ -175,12 +178,14 @@ func New() *Router {
 func (r *Router) paramsGet() *Params {
 	if vp := r.psPool.Get(); vp != nil {
 		psp := vp.(*Params)
-		*psp = (*psp)[0:0] // reset slice
-		return psp
+		if cap(*psp) >= r.maxParams {
+			*psp = (*psp)[0:0] // reset slice
+			return psp
+		}
 	}
 
 	// Allocate new slice if none is available
-	ps := make(Params, 0, 20) // TODO
+	ps := make(Params, 0, r.maxParams)
 	return &ps
 }
 
@@ -246,6 +251,11 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	if root == nil {
 		root = new(node)
 		r.trees[method] = root
+	}
+
+	// Update maxParams
+	if pc := countParams(path); pc > r.maxParams {
+		r.maxParams = pc
 	}
 
 	root.addRoute(path, handle)
