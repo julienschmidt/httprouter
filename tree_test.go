@@ -13,8 +13,10 @@ import (
 )
 
 func printChildren(n *node, prefix string) {
-	fmt.Printf(" %02d:%02d %s%s[%d] %v %t %d \r\n", n.priority, n.maxParams, prefix, n.prefix, len(n.children), n.handle, n.wildChild, n.nType)
-	for l := len(n.prefix); l > 0; l-- {
+	indices := n.pfx[:len(n.children)]
+	path := n.pfx[len(n.children):]
+	fmt.Printf(" %02d:%02d %s%s [%d:%s] %v %t %d \r\n", n.priority, n.maxParams, prefix, path, len(n.children), indices, n.handle, n.wildChild, n.nType)
+	for l := len(path); l > 0; l-- {
 		prefix += " "
 	}
 	for _, child := range n.children {
@@ -80,7 +82,7 @@ func checkPriorities(t *testing.T, n *node) uint32 {
 	if n.priority != prio {
 		t.Errorf(
 			"priority mismatch for node '%s': is %d, should be %d",
-			n.prefix, n.priority, prio,
+			n.pfx[:len(n.children)], n.priority, prio,
 		)
 	}
 
@@ -102,7 +104,7 @@ func checkMaxParams(t *testing.T, n *node) uint8 {
 	if n.maxParams != maxParams {
 		t.Errorf(
 			"maxParams mismatch for node '%s': is %d, should be %d",
-			n.prefix, n.maxParams, maxParams,
+			n.pfx[:len(n.children)], n.maxParams, maxParams,
 		)
 	}
 
