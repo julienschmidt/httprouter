@@ -256,7 +256,10 @@ func BasicAuth(h httprouter.Handle, user, pass []byte) httprouter.Handle {
 			payload, err := base64.StdEncoding.DecodeString(auth[len(basicAuthPrefix):])
 			if err == nil {
 				pair := bytes.SplitN(payload, []byte(":"), 2)
-				if len(pair) == 2 && bytes.Equal(pair[0], user) && bytes.Equal(pair[1], pass) {
+				if len(pair) == 2 &&
+					bytes.Equal(pair[0], user) &&
+					bytes.Equal(pair[1], pass) {
+
 					// Delegate request to the given handle
 					h(w, r, ps)
 					return
