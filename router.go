@@ -168,6 +168,26 @@ func New() *Router {
 	}
 }
 
+func iter(method string, n *node, f func(m, p string) bool) {
+	if !f(method, n.path) {
+		return false
+	}
+	for _, child := range n.children {
+		if !iter(method, child, f) {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *Router) Iter(f func(m, p string) bool) {
+	for m, n := r.tree {
+		if !iter(m, n, f) {
+			return
+		}
+	}
+}
+
 // GET is a shortcut for router.Handle("GET", path, handle)
 func (r *Router) GET(path string, handle Handle) {
 	r.Handle("GET", path, handle)
