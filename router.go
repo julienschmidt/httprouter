@@ -78,6 +78,7 @@ package httprouter
 
 import (
 	"net/http"
+	"strings"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
@@ -171,7 +172,17 @@ func New() *Router {
 func iter(params bool, method, path string, n *node, f func(m, p string, h Handle) bool) bool {
 	if n.handle != nil {
 		if !params {
-			if n.nType == param || n.nType == catchAll {
+			if n.nType == catchAll {
+				if !f(method, path, n.handle) {
+					return false
+				}
+				return true
+			} else if n.nType == param {
+				path = strings.TrimSuffix(path, "/")
+				i := strings.LastIndex(path, "/")
+				if i >= 0 {
+					path = path[:i]
+				}
 				if !f(method, path, n.handle) {
 					return false
 				}
@@ -203,14 +214,17 @@ func (r *Router) HandlerPaths(params bool, f func(m, p string, h Handle) bool) {
 
 func find(name, path string, n *node) bool {
 	if n.handle != nil {
-		if n.nType == param || n.nType == catchAll {
-			println("*", path)
+		if n.nType == catchAll {
 			if name == path {
 				return true
 			}
 			return false
+		} else if n.nType == param {
+			if strings.HasPrefix(path, name) {
+				return true
+			}
+			return false
 		}
-		println("+", path + n.path)
 		if name == path + n.path {
 			return true
 		}
@@ -224,7 +238,10 @@ func find(name, path string, n *node) bool {
 	return false
 }
 
-func (r *Router) PathsExist(name string) bool {
+// PathExist returns true if a path exist. If the path 
+//have parameters its checks if the begin of the path
+//exist.
+func (r *Router) PathExist(name string) bool {
 	for _, n := range r.trees {
 		if find(name, "", n) {
 			return true
