@@ -168,25 +168,71 @@ func New() *Router {
 	}
 }
 
-func iter(method string, n *node, f func(m, p string) bool) {
-	if !f(method, n.path) {
-		return false
+func iter(params bool, method, path string, n *node, f func(m, p string, h Handle) bool) bool {
+	if n.handle != nil {
+		if !params {
+			if n.nType == param || n.nType == catchAll {
+				if !f(method, path, n.handle) {
+					return false
+				}
+				return true
+			}
+		}
+		if !f(method, path + n.path, n.handle) {
+			return false
+		}
 	}
 	for _, child := range n.children {
-		if !iter(method, child, f) {
+		p := path + n.path
+		if !iter(params, method, p, child, f) {
 			return false
 		}
 	}
 	return true
 }
 
-func (r *Router) Iter(f func(m, p string) bool) {
-	for m, n := r.tree {
-		if !iter(m, n, f) {
+// HandlerPaths iter over all handlers path. If f returns
+// false HandlerPaths stops iterate.
+func (r *Router) HandlerPaths(params bool, f func(m, p string, h Handle) bool) {
+	for m, n := range r.trees {
+		if !iter(params, m, "", n, f) {
 			return
 		}
 	}
 }
+
+func find(name, path string, n *node) bool {
+	if n.handle != nil {
+		if n.nType == param || n.nType == catchAll {
+			println("*", path)
+			if name == path {
+				return true
+			}
+			return false
+		}
+		println("+", path + n.path)
+		if name == path + n.path {
+			return true
+		}
+	}
+	for _, child := range n.children {
+		p := path + n.path
+		if find(name, p, child) {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *Router) PathsExist(name string) bool {
+	for _, n := range r.trees {
+		if find(name, "", n) {
+			return true
+		}
+	}
+	return false
+}
+
 
 // GET is a shortcut for router.Handle("GET", path, handle)
 func (r *Router) GET(path string, handle Handle) {
