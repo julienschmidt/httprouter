@@ -49,13 +49,13 @@ func TestRouter(t *testing.T) {
 	router := New()
 
 	routed := false
-	router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, ps Params) {
+	router.Handle("GET", "/user/:name", Handle(func(w http.ResponseWriter, r *http.Request, ps Params) {
 		routed = true
 		want := Params{Param{"name", "gopher"}}
 		if !reflect.DeepEqual(ps, want) {
 			t.Fatalf("wrong wildcard values: want %v, got %v", want, ps)
 		}
-	})
+	}))
 
 	w := new(mockResponseWriter)
 
@@ -318,9 +318,9 @@ func TestRouterPanicHandler(t *testing.T) {
 		panicHandled = true
 	}
 
-	router.Handle("PUT", "/user/:name", func(_ http.ResponseWriter, _ *http.Request, _ Params) {
+	router.Handle("PUT", "/user/:name", Handle(func(_ http.ResponseWriter, _ *http.Request, _ Params) {
 		panic("oops!")
-	})
+	}))
 
 	w := new(mockResponseWriter)
 	req, _ := http.NewRequest("PUT", "/user/gopher", nil)
@@ -359,11 +359,11 @@ func TestRouterLookup(t *testing.T) {
 	// insert route and try again
 	router.GET("/user/:name", wantHandle)
 
-	handle, params, tsr := router.Lookup("GET", "/user/gopher")
-	if handle == nil {
+	handler, params, tsr := router.Lookup("GET", "/user/gopher")
+	if handler == nil {
 		t.Fatal("Got no handle!")
 	} else {
-		handle(nil, nil, nil)
+		handler.Handle(nil, nil, nil)
 		if !routed {
 			t.Fatal("Routing failed!")
 		}
