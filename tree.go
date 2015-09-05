@@ -5,6 +5,7 @@
 package httprouter
 
 import (
+	"golang.org/x/net/context"
 	"strings"
 	"unicode"
 )
@@ -316,7 +317,10 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 // If no handle can be found, a TSR (trailing slash redirect) recommendation is
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
-func (n *node) getValue(path string) (handle Handle, p Params, tsr bool) {
+func (n *node) getValue(path string) (handle Handle, ctx context.Context, tsr bool) {
+	var p Params
+	ctx = NewContext()
+	defer func() { ctx = context.WithValue(ctx, keyParams, p) }()
 walk: // Outer loop for walking the tree
 	for {
 		if len(path) > len(n.path) {

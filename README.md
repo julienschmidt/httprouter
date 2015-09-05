@@ -63,12 +63,12 @@ import (
     "log"
 )
 
-func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func Index(ctx context.Context, w http.ResponseWriter, r *http.Request) {
     fmt.Fprint(w, "Welcome!\n")
 }
 
-func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-    fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
+func Hello(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "hello, %s!\n", httprouter.Parameters(ctx).ByName("name"))
 }
 
 func main() {
@@ -83,6 +83,7 @@ func main() {
 ### Named parameters
 As you can see, `:name` is a *named parameter*.
 The values are accessible via `httprouter.Params`, which is just a slice of `httprouter.Param`s.
+The `httprouter.Params` can be obtained from the context using the `http.Parameters` function.
 You can get the value of a parameter either by its index in the slice, or by using the `ByName(name)` method:
 `:name` can be retrived by `ByName("name")`.
 
@@ -246,7 +247,7 @@ import (
 )
 
 func BasicAuth(h httprouter.Handle, user, pass []byte) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		const basicAuthPrefix string = "Basic "
 
 		// Get the Basic Authentication credentials
@@ -261,7 +262,7 @@ func BasicAuth(h httprouter.Handle, user, pass []byte) httprouter.Handle {
 					bytes.Equal(pair[1], pass) {
 
 					// Delegate request to the given handle
-					h(w, r, ps)
+					h(ctx, w, r)
 					return
 				}
 			}
@@ -273,11 +274,11 @@ func BasicAuth(h httprouter.Handle, user, pass []byte) httprouter.Handle {
 	}
 }
 
-func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func Index(ctx context.Context, w http.ResponseWriter, r *http.Request) {
     fmt.Fprint(w, "Not protected!\n")
 }
 
-func Protected(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func Protected(ctx context.Context, w http.ResponseWriter, r *http.Request) {
     fmt.Fprint(w, "Protected!\n")
 }
 

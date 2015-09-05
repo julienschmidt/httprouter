@@ -6,6 +6,7 @@ package httprouter
 
 import (
 	"fmt"
+	"golang.org/x/net/context"
 	"net/http"
 	"reflect"
 	"strings"
@@ -26,7 +27,7 @@ func printChildren(n *node, prefix string) {
 var fakeHandlerValue string
 
 func fakeHandler(val string) Handle {
-	return func(http.ResponseWriter, *http.Request, Params) {
+	return func(context.Context, http.ResponseWriter, *http.Request) {
 		fakeHandlerValue = val
 	}
 }
@@ -40,7 +41,7 @@ type testRequests []struct {
 
 func checkRequests(t *testing.T, tree *node, requests testRequests) {
 	for _, request := range requests {
-		handler, ps, _ := tree.getValue(request.path)
+		handler, ctx, _ := tree.getValue(request.path)
 
 		if handler == nil {
 			if !request.nilHandler {
@@ -55,7 +56,7 @@ func checkRequests(t *testing.T, tree *node, requests testRequests) {
 			}
 		}
 
-		if !reflect.DeepEqual(ps, request.ps) {
+		if !reflect.DeepEqual(Parameters(ctx), request.ps) {
 			t.Errorf("Params mismatch for route '%s'", request.path)
 		}
 	}
