@@ -22,9 +22,14 @@ import (
 //	   }
 var NewContext func() context.Context
 
+// backgroundContext is used as the parent context for all requests.
+// This is allocated at program startup to avoid additional memory
+// allocations.
+var backgroundContext context.Context = context.Background()
+
 func init() {
 	NewContext = func() context.Context {
-		return context.Background()
+		return backgroundContext
 	}
 }
 
