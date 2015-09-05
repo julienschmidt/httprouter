@@ -85,6 +85,14 @@ import (
 // wildcards (variables).
 type Handle func(http.ResponseWriter, *http.Request, Params)
 
+func (h Handle) Handle(w http.ResponseWriter, r *http.Request, p Params) {
+	h(w, r, p)
+}
+
+type Handler interface {
+	Handle(w http.ResponseWriter, r *http.Request, p Params)
+}
+
 // Param is a single URL parameter, consisting of a key and a value.
 type Param struct {
 	Key   string
@@ -211,7 +219,7 @@ func (r *Router) DELETE(path string, handle Handle) {
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
-func (r *Router) Handle(method, path string, handle Handle) {
+func (r *Router) Handle(method, path string, handler Handler) {
 	if path[0] != '/' {
 		panic("path must begin with '/' in path '" + path + "'")
 	}
@@ -226,17 +234,16 @@ func (r *Router) Handle(method, path string, handle Handle) {
 		r.trees[method] = root
 	}
 
-	root.addRoute(path, handle)
+	root.addRoute(path, handler)
 }
 
 // Handler is an adapter which allows the usage of an http.Handler as a
 // request handle.
 func (r *Router) Handler(method, path string, handler http.Handler) {
-	r.Handle(method, path,
-		func(w http.ResponseWriter, req *http.Request, _ Params) {
-			handler.ServeHTTP(w, req)
-		},
-	)
+	fn := func(w http.ResponseWriter, req *http.Request, _ Params) {
+		handler.ServeHTTP(w, req)
+	}
+	r.Handle(method, path, Handle(fn))
 }
 
 // HandlerFunc is an adapter which allows the usage of an http.HandlerFunc as a
@@ -279,7 +286,7 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 // If the path was found, it returns the handle function and the path parameter
 // values. Otherwise the third return value indicates whether a redirection to
 // the same path with an extra / without the trailing slash should be performed.
-func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
+func (r *Router) Lookup(method, path string) (Handler, Params, bool) {
 	if root := r.trees[method]; root != nil {
 		return root.getValue(path)
 	}
@@ -295,8 +302,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if root := r.trees[req.Method]; root != nil {
 		path := req.URL.Path
 
-		if handle, ps, tsr := root.getValue(path); handle != nil {
-			handle(w, req, ps)
+		if handler, ps, tsr := root.getValue(path); handler != nil {
+			handler.Handle(w, req, ps)
 			return
 		} else if req.Method != "CONNECT" && path != "/" {
 			code := 301 // Permanent redirect, request with GET method
