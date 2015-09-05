@@ -7,6 +7,7 @@ package httprouter
 import (
 	"errors"
 	"fmt"
+	"golang.org/x/net/context"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -49,7 +50,8 @@ func TestRouter(t *testing.T) {
 	router := New()
 
 	routed := false
-	router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, ps Params) {
+	router.Handle("GET", "/user/:name", func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		ps := Parameters(ctx)
 		routed = true
 		want := Params{Param{"name", "gopher"}}
 		if !reflect.DeepEqual(ps, want) {
@@ -81,25 +83,25 @@ func TestRouterAPI(t *testing.T) {
 	httpHandler := handlerStruct{&handler}
 
 	router := New()
-	router.GET("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
+	router.GET("/GET", func(_ context.Context, w http.ResponseWriter, r *http.Request) {
 		get = true
 	})
-	router.HEAD("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
+	router.HEAD("/GET", func(_ context.Context, w http.ResponseWriter, r *http.Request) {
 		head = true
 	})
-	router.OPTIONS("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
+	router.OPTIONS("/GET", func(_ context.Context, w http.ResponseWriter, r *http.Request) {
 		options = true
 	})
-	router.POST("/POST", func(w http.ResponseWriter, r *http.Request, _ Params) {
+	router.POST("/POST", func(_ context.Context, w http.ResponseWriter, r *http.Request) {
 		post = true
 	})
-	router.PUT("/PUT", func(w http.ResponseWriter, r *http.Request, _ Params) {
+	router.PUT("/PUT", func(_ context.Context, w http.ResponseWriter, r *http.Request) {
 		put = true
 	})
-	router.PATCH("/PATCH", func(w http.ResponseWriter, r *http.Request, _ Params) {
+	router.PATCH("/PATCH", func(_ context.Context, w http.ResponseWriter, r *http.Request) {
 		patch = true
 	})
-	router.DELETE("/DELETE", func(w http.ResponseWriter, r *http.Request, _ Params) {
+	router.DELETE("/DELETE", func(_ context.Context, w http.ResponseWriter, r *http.Request) {
 		delete = true
 	})
 	router.Handler("GET", "/Handler", httpHandler)
@@ -180,13 +182,13 @@ func TestRouterChaining(t *testing.T) {
 	router1.NotFound = router2
 
 	fooHit := false
-	router1.POST("/foo", func(w http.ResponseWriter, req *http.Request, _ Params) {
+	router1.POST("/foo", func(_ context.Context, w http.ResponseWriter, r *http.Request) {
 		fooHit = true
 		w.WriteHeader(http.StatusOK)
 	})
 
 	barHit := false
-	router2.POST("/bar", func(w http.ResponseWriter, req *http.Request, _ Params) {
+	router2.POST("/bar", func(_ context.Context, w http.ResponseWriter, r *http.Request) {
 		barHit = true
 		w.WriteHeader(http.StatusOK)
 	})
@@ -217,7 +219,7 @@ func TestRouterChaining(t *testing.T) {
 }
 
 func TestRouterNotAllowed(t *testing.T) {
-	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+	handlerFunc := func(_ context.Context, _ http.ResponseWriter, _ *http.Request) {}
 
 	router := New()
 	router.POST("/path", handlerFunc)
@@ -246,7 +248,7 @@ func TestRouterNotAllowed(t *testing.T) {
 }
 
 func TestRouterNotFound(t *testing.T) {
-	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+	handlerFunc := func(_ context.Context, _ http.ResponseWriter, _ *http.Request) {}
 
 	router := New()
 	router.GET("/path", handlerFunc)
@@ -318,7 +320,7 @@ func TestRouterPanicHandler(t *testing.T) {
 		panicHandled = true
 	}
 
-	router.Handle("PUT", "/user/:name", func(_ http.ResponseWriter, _ *http.Request, _ Params) {
+	router.Handle("PUT", "/user/:name", func(_ context.Context, _ http.ResponseWriter, _ *http.Request) {
 		panic("oops!")
 	})
 
@@ -340,7 +342,7 @@ func TestRouterPanicHandler(t *testing.T) {
 
 func TestRouterLookup(t *testing.T) {
 	routed := false
-	wantHandle := func(_ http.ResponseWriter, _ *http.Request, _ Params) {
+	wantHandle := func(_ context.Context, _ http.ResponseWriter, _ *http.Request) {
 		routed = true
 	}
 	wantParams := Params{Param{"name", "gopher"}}
@@ -359,7 +361,8 @@ func TestRouterLookup(t *testing.T) {
 	// insert route and try again
 	router.GET("/user/:name", wantHandle)
 
-	handle, params, tsr := router.Lookup("GET", "/user/gopher")
+	handle, ctx, tsr := router.Lookup("GET", "/user/gopher")
+	params := Parameters(ctx)
 	if handle == nil {
 		t.Fatal("Got no handle!")
 	} else {

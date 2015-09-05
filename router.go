@@ -11,16 +11,17 @@
 //  import (
 //      "fmt"
 //      "github.com/julienschmidt/httprouter"
+//      "golang.org/x/net/context"
 //      "net/http"
 //      "log"
 //  )
 //
-//  func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+//  func Index(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 //      fmt.Fprint(w, "Welcome!\n")
 //  }
 //
-//  func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-//      fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
+//  func Hello(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+//      fmt.Fprintf(w, "hello, %s!\n", httprouter.Parameters(ctx).ByName("name"))
 //  }
 //
 //  func main() {
@@ -77,13 +78,15 @@
 package httprouter
 
 import (
+	"golang.org/x/net/context"
 	"net/http"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
-// requests. Like http.HandlerFunc, but has a third parameter for the values of
-// wildcards (variables).
-type Handle func(http.ResponseWriter, *http.Request, Params)
+// requests. Like http.HandlerFunc, but has an additional parameter for
+// the context. This context can be used for obtaining parameters associated
+// with the request.
+type Handle func(context.Context, http.ResponseWriter, *http.Request)
 
 // Param is a single URL parameter, consisting of a key and a value.
 type Param struct {
@@ -233,7 +236,7 @@ func (r *Router) Handle(method, path string, handle Handle) {
 // request handle.
 func (r *Router) Handler(method, path string, handler http.Handler) {
 	r.Handle(method, path,
-		func(w http.ResponseWriter, req *http.Request, _ Params) {
+		func(_ context.Context, w http.ResponseWriter, req *http.Request) {
 			handler.ServeHTTP(w, req)
 		},
 	)
@@ -262,7 +265,8 @@ func (r *Router) ServeFiles(path string, root http.FileSystem) {
 
 	fileServer := http.FileServer(root)
 
-	r.GET(path, func(w http.ResponseWriter, req *http.Request, ps Params) {
+	r.GET(path, func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+		ps := Parameters(ctx)
 		req.URL.Path = ps.ByName("filepath")
 		fileServer.ServeHTTP(w, req)
 	})
@@ -279,7 +283,7 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 // If the path was found, it returns the handle function and the path parameter
 // values. Otherwise the third return value indicates whether a redirection to
 // the same path with an extra / without the trailing slash should be performed.
-func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
+func (r *Router) Lookup(method, path string) (Handle, context.Context, bool) {
 	if root := r.trees[method]; root != nil {
 		return root.getValue(path)
 	}
@@ -295,8 +299,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if root := r.trees[req.Method]; root != nil {
 		path := req.URL.Path
 
-		if handle, ps, tsr := root.getValue(path); handle != nil {
-			handle(w, req, ps)
+		if handle, ctx, tsr := root.getValue(path); handle != nil {
+			ctx, cancelFunc := newContextWithCancel(ctx, w, req)
+			defer cancelFunc()
+			handle(ctx, w, req)
 			return
 		} else if req.Method != "CONNECT" && path != "/" {
 			code := 301 // Permanent redirect, request with GET method
