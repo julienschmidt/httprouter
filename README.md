@@ -230,7 +230,7 @@ func main() {
 ```
 
 ### Basic Authentication
-Another quick example: Basic Authentification (RFC 2617) for handles:
+Another quick example: Basic Authentication (RFC 2617) for handles:
 
 ```go
 package main
