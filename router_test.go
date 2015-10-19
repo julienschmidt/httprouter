@@ -418,3 +418,41 @@ func TestRouterServeFiles(t *testing.T) {
 		t.Error("serving file failed")
 	}
 }
+
+func TestPathExist(t *testing.T) {
+	router := New()
+	mfs := &mockFileSystem{}
+	f := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+
+	router.PUT("/access/edit", f)
+	router.GET("/access/edit/*params", f)
+	router.GET("/panel", f)
+	router.GET("/static/*filename", f)
+	router.GET("/blog/:category/:post", f)
+	router.GET("/foo/:post", f)
+	router.ServeFiles("/files/*filepath", mfs)
+
+	if !router.PathExist("/access/edit") {
+		t.Fatal("PathExist failed")
+	}
+	if !router.PathExist("/panel") {
+		t.Fatal("PathExist failed")
+	}
+	if !router.PathExist("/static") {
+		t.Fatal("PathExist failed")
+	}
+	if !router.PathExist("/blog") {
+		t.Fatal("PathExist failed")
+	}
+	if !router.PathExist("/static") {
+		t.Fatal("PathExist failed")
+	}
+
+	if router.PathExist("/blá") {
+		t.Fatal("PathExist failed")
+	}
+	if router.PathExist("/access/edit/review") {
+		t.Fatal("PathExist failed")
+	}
+
+}
