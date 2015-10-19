@@ -180,7 +180,7 @@ func iter(params bool, method, path string, n *node, f func(m, p string, h Handl
 			} else if n.nType == param {
 				path = strings.TrimSuffix(path, "/")
 				i := strings.LastIndex(path, "/")
-				if i >= 0 {
+				if i >= 1 {
 					path = path[:i]
 				}
 				if !f(method, path, n.handle) {
