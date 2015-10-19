@@ -204,7 +204,7 @@ func iter(params bool, method, path string, n *node, f func(m, p string, h Handl
 
 // HandlerPaths iter over all handlers path. If f returns
 // false HandlerPaths stops iterate.
-func (r *Router) HandlerPaths(params bool, f func(m, p string, h Handle) bool) {
+func (r *Router) HandlerPaths(params bool, f func(method, path string, h Handle) bool) {
 	for m, n := range r.trees {
 		if !iter(params, m, "", n, f) {
 			return
