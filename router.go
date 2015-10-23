@@ -189,7 +189,7 @@ func iter(params bool, method, path string, n *node, f func(m, p string, h Handl
 				return true
 			}
 		}
-		if !f(method, path + n.path, n.handle) {
+		if !f(method, path+n.path, n.handle) {
 			return false
 		}
 	}
@@ -225,7 +225,7 @@ func find(name, path string, n *node) bool {
 			}
 			return false
 		}
-		if name == path + n.path {
+		if name == path+n.path {
 			return true
 		}
 	}
@@ -238,7 +238,7 @@ func find(name, path string, n *node) bool {
 	return false
 }
 
-// PathExist returns true if a path exist. If the path 
+// PathExist returns true if a path exist. If the path
 //have parameters its checks if the begin of the path
 //exist.
 func (r *Router) PathExist(name string) bool {
@@ -249,7 +249,6 @@ func (r *Router) PathExist(name string) bool {
 	}
 	return false
 }
-
 
 // GET is a shortcut for router.Handle("GET", path, handle)
 func (r *Router) GET(path string, handle Handle) {
