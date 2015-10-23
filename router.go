@@ -78,6 +78,7 @@ package httprouter
 
 import (
 	"net/http"
+	"strings"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
@@ -293,7 +294,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if root := r.trees[req.Method]; root != nil {
-		path := req.URL.Path
+		//path := req.URL.Path
+		path := strings.Split(req.RequestURI, "?")[0]
 
 		if handle, ps, tsr := root.getValue(path); handle != nil {
 			handle(w, req, ps)
