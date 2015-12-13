@@ -1,34 +1,70 @@
-# HttpRouter [![Build Status](https://travis-ci.org/julienschmidt/httprouter.svg?branch=master)](https://travis-ci.org/julienschmidt/httprouter) [![GoDoc](https://godoc.org/github.com/julienschmidt/httprouter?status.svg)](http://godoc.org/github.com/julienschmidt/httprouter)
+# FastHttpRouter
+[![Build Status](https://travis-ci.org/buaazp/fasthttprouter.png?branch=master)](https://travis-ci.org/buaazp/fasthttprouter)
+[![Coverage Status](https://coveralls.io/repos/buaazp/fasthttprouter/badge.svg?branch=master&service=github)](https://coveralls.io/github/buaazp/fasthttprouter?branch=master)
+[![GoDoc](http://godoc.org/github.com/buaazp/fasthttprouter?status.png)](http://godoc.org/github.com/buaazp/fasthttprouter)
 
-HttpRouter is a lightweight high performance HTTP request router (also called *multiplexer* or just *mux* for short) for [Go](https://golang.org/).
+FastHttpRouter is forked from [httprouter](https://github.com/julienschmidt/httprouter) which is a lightweight high performance HTTP request router
+(also called *multiplexer* or just *mux* for short) for [fasthttp](https://github.com/valyala/fasthttp).
 
-In contrast to the [default mux][http.ServeMux] of Go's `net/http` package, this router supports variables in the routing pattern and matches against the request method. It also scales better.
+In contrast to the [RequestHandler](https://godoc.org/github.com/valyala/fasthttp#RequestHandler) functions of valyala's `fasthttp` package, this router supports variables in the routing pattern and matches against the request method. It also scales better.
 
 The router is optimized for high performance and a small memory footprint. It scales well even with very long paths and a large number of routes. A compressing dynamic trie (radix tree) structure is used for efficient matching.
 
 ## Features
 
-**Only explicit matches:** With other routers, like [`http.ServeMux`][http.ServeMux], a requested URL path could match multiple patterns. Therefore they have some awkward pattern priority rules, like *longest match* or *first registered, first matched*. By design of this router, a request can only match exactly one or no route. As a result, there are also no unintended matches, which makes it great for SEO and improves the user experience.
+**Best Performance:** FastHttpRouter is the **fastest** go web framework in the [go-web-framework-benchmark](https://github.com/smallnest/go-web-framework-benchmark). Even faster than httprouter itself.
 
-**Stop caring about trailing slashes:** Choose the URL style you like, the router automatically redirects the client if a trailing slash is missing or if there is one extra. Of course it only does so, if the new path has a handler. If you don't like it, you can [turn off this behavior](https://godoc.org/github.com/julienschmidt/httprouter#Router.RedirectTrailingSlash).
+- Basic Test: The first test case is to mock 0 ms, 10 ms, 100 ms, 500 ms processing time in handlers. The concurrency clients are 5000.
 
-**Path auto-correction:** Besides detecting the missing or additional trailing slash at no extra cost, the router can also fix wrong cases and remove superfluous path elements (like `../` or `//`). Is [CAPTAIN CAPS LOCK](http://www.urbandictionary.com/define.php?term=Captain+Caps+Lock) one of your users? HttpRouter can help him by making a case-insensitive look-up and redirecting him to the correct URL.
+![](http://ww3.sinaimg.cn/large/4c422e03jw1f2p6nyqh9ij20mm0aktbj.jpg)
 
-**Parameters in your routing pattern:** Stop parsing the requested URL path, just give the path segment a name and the router delivers the dynamic value to you. Because of the design of the router, path parameters are very cheap.
+- Concurrency Test: In 30 ms processing time, the tets result for 100, 1000, 5000 clients is:
 
-**Zero Garbage:** The matching and dispatching process generates zero bytes of garbage. In fact, the only heap allocations that are made, is by building the slice of the key-value pairs for path parameters. If the request path contains no parameters, not a single heap allocation is necessary.
+![](http://ww4.sinaimg.cn/large/4c422e03jw1f2p6o1cdbij20lk09sack.jpg)
 
-**Best Performance:** [Benchmarks speak for themselves][benchmark]. See below for technical details of the implementation.
+See below for technical details of the implementation.
 
-**No more server crashes:** You can set a [Panic handler][Router.PanicHandler] to deal with panics occurring during handling a HTTP request. The router then recovers and lets the `PanicHandler` log what happened and deliver a nice error page.
+**Only explicit matches:** With other routers, like [http.ServeMux](http://golang.org/pkg/net/http/#ServeMux),
+a requested URL path could match multiple patterns. Therefore they have some
+awkward pattern priority rules, like *longest match* or *first registered,
+first matched*. By design of this router, a request can only match exactly one
+or no route. As a result, there are also no unintended matches, which makes it
+great for SEO and improves the user experience.
 
-**Perfect for APIs:** The router design encourages to build sensible, hierarchical RESTful APIs. Moreover it has builtin native support for [OPTIONS requests](http://zacstewart.com/2012/04/14/http-options-method.html) and `405 Method Not Allowed` replies.
+**Stop caring about trailing slashes:** Choose the URL style you like, the
+router automatically redirects the client if a trailing slash is missing or if
+there is one extra. Of course it only does so, if the new path has a handler.
+If you don't like it, you can [turn off this behavior](http://godoc.org/github.com/buaazp/fasthttprouter#Router.RedirectTrailingSlash).
 
-Of course you can also set **custom [`NotFound`][Router.NotFound] and  [`MethodNotAllowed`](https://godoc.org/github.com/julienschmidt/httprouter#Router.MethodNotAllowed) handlers** and [**serve static files**][Router.ServeFiles].
+**Path auto-correction:** Besides detecting the missing or additional trailing
+slash at no extra cost, the router can also fix wrong cases and remove
+superfluous path elements (like `../` or `//`).
+Is [CAPTAIN CAPS LOCK](http://www.urbandictionary.com/define.php?term=Captain+Caps+Lock) one of your users?
+FastHttpRouter can help him by making a case-insensitive look-up and redirecting him
+to the correct URL.
+
+**Parameters in your routing pattern:** Stop parsing the requested URL path,
+just give the path segment a name and the router delivers the dynamic value to
+you. Because of the design of the router, path parameters are very cheap.
+
+**Zero Garbage:** The matching and dispatching process generates zero bytes of
+garbage. In fact, the only heap allocations that are made, is by building the
+slice of the key-value pairs for path parameters. If the request path contains
+no parameters, not a single heap allocation is necessary.
+
+**No more server crashes:** You can set a [Panic handler](http://godoc.org/github.com/buaazp/fasthttprouter#Router.PanicHandler) to deal with panics
+occurring during handling a HTTP request. The router then recovers and lets the
+PanicHandler log what happened and deliver a nice error page.
+
+**Perfect for APIs:** The router design encourages to build sensible, hierarchical
+RESTful APIs. Moreover it has builtin native support for [OPTIONS requests](http://zacstewart.com/2012/04/14/http-options-method.html)
+and `405 Method Not Allowed` replies.
+
+Of course you can also set **custom [NotFound](http://godoc.org/github.com/buaazp/fasthttprouter#Router.NotFound) and  [MethodNotAllowed](http://godoc.org/github.com/buaazp/fasthttprouter#Router.MethodNotAllowed) handlers** and [**serve static files**](http://godoc.org/github.com/buaazp/fasthttprouter#Router.ServeFiles).
 
 ## Usage
 
-This is just a quick introduction, view the [GoDoc](http://godoc.org/github.com/julienschmidt/httprouter) for details.
+This is just a quick introduction, view the [GoDoc](http://godoc.org/github.com/buaazp/fasthttprouter) for details.
 
 Let's start with a trivial example:
 
@@ -36,26 +72,27 @@ Let's start with a trivial example:
 package main
 
 import (
-    "fmt"
-    "github.com/julienschmidt/httprouter"
-    "net/http"
-    "log"
+	"fmt"
+	"log"
+
+	"github.com/buaazp/fasthttprouter"
+	"github.com/valyala/fasthttp"
 )
 
-func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-    fmt.Fprint(w, "Welcome!\n")
+func Index(ctx *fasthttp.RequestCtx, _ fasthttprouter.Params) {
+	fmt.Fprint(ctx, "Welcome!\n")
 }
 
-func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-    fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
+func Hello(ctx *fasthttp.RequestCtx, ps fasthttprouter.Params) {
+	fmt.Fprintf(ctx, "hello, %s!\n", ps.ByName("name"))
 }
 
 func main() {
-    router := httprouter.New()
-    router.GET("/", Index)
-    router.GET("/hello/:name", Hello)
+	router := fasthttprouter.New()
+	router.GET("/", Index)
+	router.GET("/hello/:name", Hello)
 
-    log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(fasthttp.ListenAndServe(":8080", router.Handler))
 }
 ```
 
@@ -78,7 +115,9 @@ Pattern: /user/:user
 
 ### Catch-All parameters
 
-The second type are *catch-all* parameters and have the form `*name`. Like the name suggests, they match everything. Therefore they must always be at the **end** of the pattern:
+The second type are *catch-all* parameters and have the form `*name`.
+Like the name suggests, they match everything.
+Therefore they must always be at the **end** of the pattern:
 
 ```
 Pattern: /src/*filepath
@@ -127,9 +166,11 @@ For even better scalability, the child nodes on each tree level are ordered by p
 
 ## Why doesn't this work with `http.Handler`?
 
-**It does!** The router itself implements the `http.Handler` interface. Moreover the router provides convenient [adapters for `http.Handler`][Router.Handler]s and [`http.HandlerFunc`][Router.HandlerFunc]s which allows them to be used as a [`httprouter.Handle`][Router.Handle] when registering a route. The only disadvantage is, that no parameter values can be retrieved when a `http.Handler` or `http.HandlerFunc` is used, since there is no efficient way to pass the values with the existing function parameters. Therefore [`httprouter.Handle`][Router.Handle] has a third function parameter.
+Becasue fasthttp doesn't provide http.Handler. See this [description](https://github.com/valyala/fasthttp#switching-from-nethttp-to-fasthttp).
 
-Just try it out for yourself, the usage of HttpRouter is very straightforward. The package is compact and minimalistic, but also probably one of the easiest routers to set up.
+Fasthttp works with [RequestHandler](https://godoc.org/github.com/valyala/fasthttp#RequestHandler) functions instead of objects implementing Handler interface. So a FastHttpRouter provides a [Handler](https://godoc.org/github.com/buaazp/fasthttprouter#Router.Handler) interface to implement the fasthttp.ListenAndServe interface.
+
+Just try it out for yourself, the usage of FastHttpRouter is very straightforward. The package is compact and minimalistic, but also probably one of the easiest routers to set up.
 
 ## Where can I find Middleware *X*?
 
@@ -144,36 +185,35 @@ You want to use sub-domains?
 Define a router per host!
 
 ```go
-// We need an object that implements the http.Handler interface.
-// Therefore we need a type for which we implement the ServeHTTP method.
-// We just use a map here, in which we map host names (with port) to http.Handlers
-type HostSwitch map[string]http.Handler
+// We need an object that implements the fasthttp.RequestHandler interface.
+// We just use a map here, in which we map host names (with port) to fasthttp.RequestHandlers
+type HostSwitch map[string]fasthttp.RequestHandler
 
-// Implement the ServerHTTP method on our new type
-func (hs HostSwitch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// Implement a CheckHost method on our new type
+func (hs HostSwitch) CheckHost(ctx *fasthttp.RequestCtx) {
 	// Check if a http.Handler is registered for the given host.
 	// If yes, use it to handle the request.
-	if handler := hs[r.Host]; handler != nil {
-		handler.ServeHTTP(w, r)
+	if handler := hs[string(ctx.Host())]; handler != nil {
+		handler(ctx)
 	} else {
 		// Handle host names for wich no handler is registered
-		http.Error(w, "Forbidden", 403) // Or Redirect?
+		ctx.Error("Forbidden", 403) // Or Redirect?
 	}
 }
 
 func main() {
 	// Initialize a router as usual
-	router := httprouter.New()
+	router := fasthttprouter.New()
 	router.GET("/", Index)
 	router.GET("/hello/:name", Hello)
 
 	// Make a new HostSwitch and insert the router (our http handler)
 	// for example.com and port 12345
 	hs := make(HostSwitch)
-	hs["example.com:12345"] = router
+	hs["example.com:12345"] = router.Handler
 
 	// Use the HostSwitch to listen and serve on port 12345
-	log.Fatal(http.ListenAndServe(":12345", hs))
+	log.Fatal(fasthttp.ListenAndServe(":12345", hs.CheckHost))
 }
 ```
 
@@ -185,92 +225,103 @@ Another quick example: Basic Authentication (RFC 2617) for handles:
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
-	"net/http"
+	"strings"
 
-	"github.com/julienschmidt/httprouter"
+	"github.com/buaazp/fasthttprouter"
+	"github.com/valyala/fasthttp"
 )
 
-func BasicAuth(h httprouter.Handle, requiredUser, requiredPassword string) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+// basicAuth returns the username and password provided in the request's
+// Authorization header, if the request uses HTTP Basic Authentication.
+// See RFC 2617, Section 2.
+func basicAuth(ctx *fasthttp.RequestCtx) (username, password string, ok bool) {
+	auth := ctx.Request.Header.Peek("Authorization")
+	if auth == nil {
+		return
+	}
+	return parseBasicAuth(string(auth))
+}
+
+// parseBasicAuth parses an HTTP Basic Authentication string.
+// "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" returns ("Aladdin", "open sesame", true).
+func parseBasicAuth(auth string) (username, password string, ok bool) {
+	const prefix = "Basic "
+	if !strings.HasPrefix(auth, prefix) {
+		return
+	}
+	c, err := base64.StdEncoding.DecodeString(auth[len(prefix):])
+	if err != nil {
+		return
+	}
+	cs := string(c)
+	s := strings.IndexByte(cs, ':')
+	if s < 0 {
+		return
+	}
+	return cs[:s], cs[s+1:], true
+}
+
+// BasicAuth is the basic auth handler
+func BasicAuth(h fasthttprouter.Handle, requiredUser, requiredPassword string) fasthttprouter.Handle {
+	return fasthttprouter.Handle(func(ctx *fasthttp.RequestCtx, ps fasthttprouter.Params) {
 		// Get the Basic Authentication credentials
-		user, password, hasAuth := r.BasicAuth()
+		user, password, hasAuth := basicAuth(ctx)
 
 		if hasAuth && user == requiredUser && password == requiredPassword {
 			// Delegate request to the given handle
-			h(w, r, ps)
+			h(ctx, ps)
 		} else {
 			// Request Basic Authentication otherwise
-			w.Header().Set("WWW-Authenticate", "Basic realm=Restricted")
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			ctx.Response.Header.Set("WWW-Authenticate", "Basic realm=Restricted")
+			ctx.Error(fasthttp.StatusMessage(fasthttp.StatusUnauthorized), fasthttp.StatusUnauthorized)
 		}
-	}
+	})
 }
 
-func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	fmt.Fprint(w, "Not protected!\n")
+// Index is the index handler
+func Index(ctx *fasthttp.RequestCtx, _ fasthttprouter.Params) {
+	fmt.Fprint(ctx, "Not protected!\n")
 }
 
-func Protected(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	fmt.Fprint(w, "Protected!\n")
+// Protected is the Protected handler
+func Protected(ctx *fasthttp.RequestCtx, _ fasthttprouter.Params) {
+	fmt.Fprint(ctx, "Protected!\n")
 }
 
 func main() {
 	user := "gordon"
 	pass := "secret!"
 
-	router := httprouter.New()
+	router := fasthttprouter.New()
 	router.GET("/", Index)
 	router.GET("/protected/", BasicAuth(Protected, user, pass))
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(fasthttp.ListenAndServe(":8080", router.Handler))
 }
 ```
 
 ## Chaining with the NotFound handler
 
-**NOTE: It might be required to set [`Router.HandleMethodNotAllowed`][Router.HandleMethodNotAllowed] to `false` to avoid problems.**
+**NOTE: It might be required to set [Router.HandleMethodNotAllowed](http://godoc.org/github.com/buaazp/fasthttprouter#Router.HandleMethodNotAllowed) to `false` to avoid problems.**
 
-You can use another [`http.Handler`][http.Handler], for example another router, to handle requests which could not be matched by this router by using the [`Router.NotFound`][Router.NotFound] handler. This allows chaining.
+You can use another [http.Handler](http://golang.org/pkg/net/http/#Handler), for example another router, to handle requests which could not be matched by this router by using the [Router.NotFound](http://godoc.org/github.com/buaazp/fasthttprouter#Router.NotFound) handler. This allows chaining.
 
 ### Static files
-
-The `NotFound` handler can for example be used to serve static files from the root path `/` (like an `index.html` file along with other assets):
+The `NotFound` handler can for example be used to serve static files from the root path `/` (like an index.html file along with other assets):
 
 ```go
 // Serve static files from the ./public directory
-router.NotFound = http.FileServer(http.Dir("public"))
+router.NotFound = fasthttp.FSHandler("./public", 0)
 ```
 
 But this approach sidesteps the strict core rules of this router to avoid routing problems. A cleaner approach is to use a distinct sub-path for serving files, like `/static/*filepath` or `/files/*filepath`.
 
-## Web Frameworks based on HttpRouter
+## Web Frameworks based on FastHttpRouter
 
 If the HttpRouter is a bit too minimalistic for you, you might try one of the following more high-level 3rd-party web frameworks building upon the HttpRouter package:
 
-* [Ace](https://github.com/plimble/ace): Blazing fast Go Web Framework
-* [api2go](https://github.com/manyminds/api2go): A JSON API Implementation for Go
-* [Gin](https://github.com/gin-gonic/gin): Features a martini-like API with much better performance
-* [Goat](https://github.com/bahlo/goat): A minimalistic REST API server in Go
-* [Hikaru](https://github.com/najeira/hikaru): Supports standalone and Google AppEngine
-* [Hitch](https://github.com/nbio/hitch): Hitch ties httprouter, [httpcontext](https://github.com/nbio/httpcontext), and middleware up in a bow
-* [httpway](https://github.com/corneldamian/httpway): Simple middleware extension with context for httprouter and a server with gracefully shutdown support
-* [kami](https://github.com/guregu/kami): A tiny web framework using x/net/context
-* [Medeina](https://github.com/imdario/medeina): Inspired by Ruby's Roda and Cuba
-* [Neko](https://github.com/rocwong/neko): A lightweight web application framework for Golang
-* [River](https://github.com/abiosoft/river): River is a simple and lightweight REST server
-* [Roxanna](https://github.com/iamthemuffinman/Roxanna): An amalgamation of httprouter, better logging, and hot reload
-* [siesta](https://github.com/VividCortex/siesta): Composable HTTP handlers with contexts
-* [xmux](https://github.com/rs/xmux): xmux is a httprouter fork on top of xhandler (net/context aware)
+- Waiting for you to do this...
 
-[benchmark]: <https://github.com/julienschmidt/go-http-routing-benchmark>
-[http.Handler]: <https://golang.org/pkg/net/http/#Handler
-[http.ServeMux]: <https://golang.org/pkg/net/http/#ServeMux>
-[Router.Handle]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.Handle>
-[Router.HandleMethodNotAllowed]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.HandleMethodNotAllowed>
-[Router.Handler]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.Handler>
-[Router.HandlerFunc]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.HandlerFunc>
-[Router.NotFound]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.NotFound>
-[Router.PanicHandler]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.PanicHandler>
-[Router.ServeFiles]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.ServeFiles>

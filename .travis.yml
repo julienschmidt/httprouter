@@ -1,11 +1,21 @@
 sudo: false
 language: go
+
 go:
-  - 1.1
-  - 1.2
-  - 1.3
-  - 1.4
   - 1.5
   - 1.6
-  - 1.7
-  - tip
+
+before_install:
+  - go get -v github.com/axw/gocov/gocov
+  - go get -v github.com/mattn/goveralls
+  # - go get -v github.com/golang/lint/golint
+
+install:
+  - go get -d -t -v ./...
+  - go install -v
+
+script:
+  - go vet ./...
+  # - $HOME/gopath/bin/golint ./...
+  - go test -v .
+  - $HOME/gopath/bin/goveralls -service=travis-ci -ignore examples/auth/auth.go,examples/basic/basic.go,examples/hosts/hosts.go

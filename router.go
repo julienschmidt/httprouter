@@ -2,34 +2,35 @@
 // Use of this source code is governed by a BSD-style license that can be found
 // in the LICENSE file.
 
-// Package httprouter is a trie based high performance HTTP request router.
+// Package fasthttprouter is a trie based high performance HTTP request router.
 //
 // A trivial example is:
 //
-//  package main
+// package main
+
+// import (
+//     "fmt"
+//     "log"
 //
-//  import (
-//      "fmt"
-//      "github.com/julienschmidt/httprouter"
-//      "net/http"
-//      "log"
-//  )
-//
-//  func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-//      fmt.Fprint(w, "Welcome!\n")
-//  }
-//
-//  func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-//      fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
-//  }
-//
-//  func main() {
-//      router := httprouter.New()
-//      router.GET("/", Index)
-//      router.GET("/hello/:name", Hello)
-//
-//      log.Fatal(http.ListenAndServe(":8080", router))
-//  }
+//     "github.com/buaazp/fasthttprouter"
+//     "github.com/valyala/fasthttp"
+// )
+
+// func Index(ctx *fasthttp.RequestCtx, _ fasthttprouter.Params) {
+//     fmt.Fprint(ctx, "Welcome!\n")
+// }
+
+// func Hello(ctx *fasthttp.RequestCtx, ps fasthttprouter.Params) {
+//     fmt.Fprintf(ctx, "hello, %s!\n", ps.ByName("name"))
+// }
+
+// func main() {
+//     router := fasthttprouter.New()
+//     router.GET("/", Index)
+//     router.GET("/hello/:name", Hello)
+
+//     log.Fatal(fasthttp.ListenAndServe(":8080", router.Handler))
+// }
 //
 // The router matches incoming requests by the request method and the path.
 // If a handle is registered for this path and method, the router delegates the
@@ -74,16 +75,23 @@
 //  // by the index of the parameter. This way you can also get the name (key)
 //  thirdKey   := ps[2].Key   // the name of the 3rd parameter
 //  thirdValue := ps[2].Value // the value of the 3rd parameter
-package httprouter
+
+package fasthttprouter
 
 import (
-	"net/http"
+	"strings"
+
+	"github.com/valyala/fasthttp"
+)
+
+var (
+	defaultContentType = []byte("text/plain; charset=utf-8")
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
 // requests. Like http.HandlerFunc, but has a third parameter for the values of
 // wildcards (variables).
-type Handle func(http.ResponseWriter, *http.Request, Params)
+type Handle func(*fasthttp.RequestCtx, Params)
 
 // Param is a single URL parameter, consisting of a key and a value.
 type Param struct {
@@ -144,25 +152,22 @@ type Router struct {
 
 	// Configurable http.Handler which is called when no matching route is
 	// found. If it is not set, http.NotFound is used.
-	NotFound http.Handler
+	NotFound fasthttp.RequestHandler
 
 	// Configurable http.Handler which is called when a request
 	// cannot be routed and HandleMethodNotAllowed is true.
 	// If it is not set, http.Error with http.StatusMethodNotAllowed is used.
 	// The "Allow" header with allowed request methods is set before the handler
 	// is called.
-	MethodNotAllowed http.Handler
+	MethodNotAllowed fasthttp.RequestHandler
 
 	// Function to handle panics recovered from http handlers.
 	// It should be used to generate a error page and return the http error code
 	// 500 (Internal Server Error).
 	// The handler can be used to keep your server from crashing because of
 	// unrecovered panics.
-	PanicHandler func(http.ResponseWriter, *http.Request, interface{})
+	PanicHandler func(*fasthttp.RequestCtx, interface{})
 }
-
-// Make sure the Router conforms with the http.Handler interface
-var _ http.Handler = New()
 
 // New returns a new initialized Router.
 // Path auto-correction, including trailing slashes, is enabled by default.
@@ -236,22 +241,6 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	root.addRoute(path, handle)
 }
 
-// Handler is an adapter which allows the usage of an http.Handler as a
-// request handle.
-func (r *Router) Handler(method, path string, handler http.Handler) {
-	r.Handle(method, path,
-		func(w http.ResponseWriter, req *http.Request, _ Params) {
-			handler.ServeHTTP(w, req)
-		},
-	)
-}
-
-// HandlerFunc is an adapter which allows the usage of an http.HandlerFunc as a
-// request handle.
-func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
-	r.Handler(method, path, handler)
-}
-
 // ServeFiles serves files from the given file system root.
 // The path must end with "/*filepath", files are then served from the local
 // path /defined/root/dir/*filepath.
@@ -259,25 +248,23 @@ func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
 // "/etc/passwd" would be served.
 // Internally a http.FileServer is used, therefore http.NotFound is used instead
 // of the Router's NotFound handler.
-// To use the operating system's file system implementation,
-// use http.Dir:
-//     router.ServeFiles("/src/*filepath", http.Dir("/var/www"))
-func (r *Router) ServeFiles(path string, root http.FileSystem) {
+//     router.ServeFiles("/src/*filepath", "/var/www")
+func (r *Router) ServeFiles(path string, rootPath string) {
 	if len(path) < 10 || path[len(path)-10:] != "/*filepath" {
 		panic("path must end with /*filepath in path '" + path + "'")
 	}
+	prefix := path[:len(path)-10]
 
-	fileServer := http.FileServer(root)
+	fileHandler := fasthttp.FSHandler(rootPath, strings.Count(prefix, "/"))
 
-	r.GET(path, func(w http.ResponseWriter, req *http.Request, ps Params) {
-		req.URL.Path = ps.ByName("filepath")
-		fileServer.ServeHTTP(w, req)
+	r.GET(path, func(ctx *fasthttp.RequestCtx, _ Params) {
+		fileHandler(ctx)
 	})
 }
 
-func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
+func (r *Router) recv(ctx *fasthttp.RequestCtx) {
 	if rcv := recover(); rcv != nil {
-		r.PanicHandler(w, req, rcv)
+		r.PanicHandler(ctx, rcv)
 	}
 }
 
@@ -294,7 +281,7 @@ func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
 }
 
 func (r *Router) allowed(path, reqMethod string) (allow string) {
-	if path == "*" { // server-wide
+	if path == "*" || path == "/*" { // server-wide
 		for method := range r.trees {
 			if method == "OPTIONS" {
 				continue
@@ -331,33 +318,34 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 	return
 }
 
-// ServeHTTP makes the router implement the http.Handler interface.
-func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+// Handler makes the router implement the fasthttp.ListenAndServe interface.
+func (r *Router) Handler(ctx *fasthttp.RequestCtx) {
 	if r.PanicHandler != nil {
-		defer r.recv(w, req)
+		defer r.recv(ctx)
 	}
 
-	path := req.URL.Path
-
-	if root := r.trees[req.Method]; root != nil {
-		if handle, ps, tsr := root.getValue(path); handle != nil {
-			handle(w, req, ps)
+	path := string(ctx.Path())
+	method := string(ctx.Method())
+	if root := r.trees[method]; root != nil {
+		if f, ps, tsr := root.getValue(path); f != nil {
+			f(ctx, ps)
 			return
-		} else if req.Method != "CONNECT" && path != "/" {
+		} else if method != "CONNECT" && path != "/" {
 			code := 301 // Permanent redirect, request with GET method
-			if req.Method != "GET" {
+			if method != "GET" {
 				// Temporary redirect, request with same method
 				// As of Go 1.3, Go does not support status code 308.
 				code = 307
 			}
 
 			if tsr && r.RedirectTrailingSlash {
+				var uri string
 				if len(path) > 1 && path[len(path)-1] == '/' {
-					req.URL.Path = path[:len(path)-1]
+					uri = path[:len(path)-1]
 				} else {
-					req.URL.Path = path + "/"
+					uri = path + "/"
 				}
-				http.Redirect(w, req, req.URL.String(), code)
+				ctx.Redirect(uri, code)
 				return
 			}
 
@@ -368,34 +356,33 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					r.RedirectTrailingSlash,
 				)
 				if found {
-					req.URL.Path = string(fixedPath)
-					http.Redirect(w, req, req.URL.String(), code)
+					uri := string(fixedPath)
+					ctx.Redirect(uri, code)
 					return
 				}
 			}
 		}
 	}
 
-	if req.Method == "OPTIONS" {
+	if method == "OPTIONS" {
 		// Handle OPTIONS requests
 		if r.HandleOPTIONS {
-			if allow := r.allowed(path, req.Method); len(allow) > 0 {
-				w.Header().Set("Allow", allow)
+			if allow := r.allowed(path, method); len(allow) > 0 {
+				ctx.Response.Header.Set("Allow", allow)
 				return
 			}
 		}
 	} else {
 		// Handle 405
 		if r.HandleMethodNotAllowed {
-			if allow := r.allowed(path, req.Method); len(allow) > 0 {
-				w.Header().Set("Allow", allow)
+			if allow := r.allowed(path, method); len(allow) > 0 {
+				ctx.Response.Header.Set("Allow", allow)
 				if r.MethodNotAllowed != nil {
-					r.MethodNotAllowed.ServeHTTP(w, req)
+					r.MethodNotAllowed(ctx)
 				} else {
-					http.Error(w,
-						http.StatusText(http.StatusMethodNotAllowed),
-						http.StatusMethodNotAllowed,
-					)
+					ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
+					ctx.SetContentTypeBytes(defaultContentType)
+					ctx.SetBodyString(fasthttp.StatusMessage(fasthttp.StatusMethodNotAllowed))
 				}
 				return
 			}
@@ -404,8 +391,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Handle 404
 	if r.NotFound != nil {
-		r.NotFound.ServeHTTP(w, req)
+		r.NotFound(ctx)
 	} else {
-		http.NotFound(w, req)
+		ctx.Error(fasthttp.StatusMessage(fasthttp.StatusNotFound),
+			fasthttp.StatusNotFound)
 	}
 }
