@@ -85,6 +85,14 @@ import (
 // wildcards (variables).
 type Handle func(http.ResponseWriter, *http.Request, Params)
 
+// Filter is an interface that can be registered on the Router to apply custom
+// logic and pass-thru the route information
+type Filter interface {
+	// ExecuteFilter allows for rewriting / modification of the original request or
+	// resulting path and params values
+	ExecuteFilter(*http.Request, *string, *Params)
+}
+
 // Param is a single URL parameter, consisting of a key and a value.
 type Param struct {
 	Key   string
@@ -153,6 +161,10 @@ type Router struct {
 	// The handler can be used to keep your server from crashing because of
 	// unrecovered panics.
 	PanicHandler func(http.ResponseWriter, *http.Request, interface{})
+
+	// Slice containing any Filter interfaces that you wish to execute prior to
+	// processing the route
+	PreProcessingFilters []Filter
 }
 
 // Make sure the Router conforms with the http.Handler interface
@@ -165,6 +177,7 @@ func New() *Router {
 		RedirectTrailingSlash:  true,
 		RedirectFixedPath:      true,
 		HandleMethodNotAllowed: true,
+		PreProcessingFilters: []Filter{},
 	}
 }
 
@@ -295,8 +308,15 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if root := r.trees[req.Method]; root != nil {
 		path := req.URL.Path
 
+		// execute any pre-process filters
+		params := make(Params, 0)
+		for _, filter := range r.PreProcessingFilters {
+			filter.ExecuteFilter(req, &path, &params)
+		}
+
 		if handle, ps, tsr := root.getValue(path); handle != nil {
-			handle(w, req, ps)
+			params = append(params, ps...)		// append the route params to the filter params
+			handle(w, req, params)
 			return
 		} else if req.Method != "CONNECT" && path != "/" {
 			code := 301 // Permanent redirect, request with GET method
