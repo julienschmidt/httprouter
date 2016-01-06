@@ -5,9 +5,81 @@
 package httprouter
 
 import (
+	"net/url"
 	"strings"
 	"unicode"
 )
+
+// Unfortunately this code is necessary as url.QueryUnescape is for
+// unescaping past the  '?' in the URL which means it changes '+'
+// to ' '.
+
+func ishex(c byte) bool {
+	switch {
+	case '0' <= c && c <= '9':
+		return true
+	case 'a' <= c && c <= 'f':
+		return true
+	case 'A' <= c && c <= 'F':
+		return true
+	}
+	return false
+}
+
+func unhex(c byte) byte {
+	switch {
+	case '0' <= c && c <= '9':
+		return c - '0'
+	case 'a' <= c && c <= 'f':
+		return c - 'a' + 10
+	case 'A' <= c && c <= 'F':
+		return c - 'A' + 10
+	}
+	return 0
+}
+
+func pathUnescape(s string) (string, error) {
+	// Count %, check that they're well-formed.
+	n := 0
+	for i := 0; i < len(s); {
+		switch s[i] {
+		case '%':
+			n++
+			if i+2 >= len(s) || !ishex(s[i+1]) || !ishex(s[i+2]) {
+				s = s[i:]
+				if len(s) > 3 {
+					s = s[0:3]
+				}
+				return "", url.EscapeError(s)
+			}
+			i += 3
+		case '+':
+			i++
+		default:
+			i++
+		}
+	}
+
+	if n == 0 {
+		return s, nil
+	}
+
+	t := make([]byte, len(s)-2*n)
+	j := 0
+	for i := 0; i < len(s); {
+		switch s[i] {
+		case '%':
+			t[j] = unhex(s[i+1])<<4 | unhex(s[i+2])
+			j++
+			i += 3
+		default:
+			t[j] = s[i]
+			j++
+			i++
+		}
+	}
+	return string(t), nil
+}
 
 func min(a, b int) int {
 	if a <= b {
@@ -362,7 +434,7 @@ walk: // Outer loop for walking the tree
 					i := len(p)
 					p = p[:i+1] // expand slice within preallocated capacity
 					p[i].Key = n.path[1:]
-					p[i].Value = path[:end]
+					p[i].Value, _ = pathUnescape(path[:end])
 
 					// we need to go deeper!
 					if end < len(path) {
@@ -397,7 +469,7 @@ walk: // Outer loop for walking the tree
 					i := len(p)
 					p = p[:i+1] // expand slice within preallocated capacity
 					p[i].Key = n.path[2:]
-					p[i].Value = path
+					p[i].Value, _ = pathUnescape(path)
 
 					handle = n.handle
 					return
