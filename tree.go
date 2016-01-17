@@ -439,6 +439,7 @@ walk: // Outer loop for walking the tree
 				path == n.path[:len(n.path)-1] && n.handle != nil)
 		return
 	}
+	return
 }
 
 // Makes a case-insensitive lookup of the given path and tries to find a handler.
