@@ -77,6 +77,7 @@
 package httprouter
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -169,37 +170,37 @@ func New() *Router {
 }
 
 // GET is a shortcut for router.Handle("GET", path, handle)
-func (r *Router) GET(path string, handle Handle) {
+func (r *Router) GET(path string, handle interface{}) {
 	r.Handle("GET", path, handle)
 }
 
 // HEAD is a shortcut for router.Handle("HEAD", path, handle)
-func (r *Router) HEAD(path string, handle Handle) {
+func (r *Router) HEAD(path string, handle interface{}) {
 	r.Handle("HEAD", path, handle)
 }
 
 // OPTIONS is a shortcut for router.Handle("OPTIONS", path, handle)
-func (r *Router) OPTIONS(path string, handle Handle) {
+func (r *Router) OPTIONS(path string, handle interface{}) {
 	r.Handle("OPTIONS", path, handle)
 }
 
 // POST is a shortcut for router.Handle("POST", path, handle)
-func (r *Router) POST(path string, handle Handle) {
+func (r *Router) POST(path string, handle interface{}) {
 	r.Handle("POST", path, handle)
 }
 
 // PUT is a shortcut for router.Handle("PUT", path, handle)
-func (r *Router) PUT(path string, handle Handle) {
+func (r *Router) PUT(path string, handle interface{}) {
 	r.Handle("PUT", path, handle)
 }
 
 // PATCH is a shortcut for router.Handle("PATCH", path, handle)
-func (r *Router) PATCH(path string, handle Handle) {
+func (r *Router) PATCH(path string, handle interface{}) {
 	r.Handle("PATCH", path, handle)
 }
 
 // DELETE is a shortcut for router.Handle("DELETE", path, handle)
-func (r *Router) DELETE(path string, handle Handle) {
+func (r *Router) DELETE(path string, handle interface{}) {
 	r.Handle("DELETE", path, handle)
 }
 
@@ -211,7 +212,7 @@ func (r *Router) DELETE(path string, handle Handle) {
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
-func (r *Router) Handle(method, path string, handle Handle) {
+func (r *Router) Handle(method, path string, handle interface{}) {
 	if path[0] != '/' {
 		panic("path must begin with '/' in path '" + path + "'")
 	}
@@ -226,7 +227,22 @@ func (r *Router) Handle(method, path string, handle Handle) {
 		r.trees[method] = root
 	}
 
-	root.addRoute(path, handle)
+	var handler http.Handler = nil
+	switch t := handle.(type) {
+	case Handle:
+	case func(http.ResponseWriter, *http.Request, Params):
+		handler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			t(w, req, Parameters(req))
+		})
+	case http.HandlerFunc:
+	case http.Handler:
+		handler = t
+	case func(http.ResponseWriter, *http.Request):
+		handler = http.HandlerFunc(t)
+	default:
+		panic(fmt.Sprintf("not a handler given: %T - %+v", t, t))
+	}
+	root.addRoute(path, handler)
 }
 
 // Handler is an adapter which allows the usage of an http.Handler as a
@@ -279,7 +295,7 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 // If the path was found, it returns the handle function and the path parameter
 // values. Otherwise the third return value indicates whether a redirection to
 // the same path with an extra / without the trailing slash should be performed.
-func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
+func (r *Router) Lookup(method, path string) (http.Handler, Params, bool) {
 	if root := r.trees[method]; root != nil {
 		return root.getValue(path)
 	}
@@ -296,7 +312,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		path := req.URL.Path
 
 		if handle, ps, tsr := root.getValue(path); handle != nil {
-			handle(w, req, ps)
+			if len(ps) > 0 {
+				parameterized(req).set(ps)
+			}
+			handle.ServeHTTP(w, req)
 			return
 		} else if req.Method != "CONNECT" && path != "/" {
 			code := 301 // Permanent redirect, request with GET method
