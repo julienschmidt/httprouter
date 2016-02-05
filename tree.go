@@ -106,6 +106,7 @@ func (n *node) addRoute(path string, handle Handle) {
 				child := node{
 					path:      n.path[i:],
 					wildChild: n.wildChild,
+					nType:     static,
 					indices:   n.indices,
 					children:  n.children,
 					handle:    n.handle,
