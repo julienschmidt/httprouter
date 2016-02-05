@@ -145,6 +145,8 @@ type Router struct {
 	// Configurable http.Handler which is called when a request
 	// cannot be routed and HandleMethodNotAllowed is true.
 	// If it is not set, http.Error with http.StatusMethodNotAllowed is used.
+	// The "Allow" header with allowed request methods is set before the handler
+	// is called.
 	MethodNotAllowed http.Handler
 
 	// Function to handle panics recovered from http handlers.
@@ -333,6 +335,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Handle 405
 	if r.HandleMethodNotAllowed {
+		var allow string
 		for method := range r.trees {
 			// Skip the requested method - we already tried this one
 			if method == req.Method {
@@ -341,16 +344,26 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 			handle, _, _ := r.trees[method].getValue(req.URL.Path)
 			if handle != nil {
-				if r.MethodNotAllowed != nil {
-					r.MethodNotAllowed.ServeHTTP(w, req)
+				// add request method to list of allowed methods
+				if len(allow) == 0 {
+					allow = method
 				} else {
-					http.Error(w,
-						http.StatusText(http.StatusMethodNotAllowed),
-						http.StatusMethodNotAllowed,
-					)
+					allow += ", " + method
 				}
-				return
 			}
+		}
+
+		if len(allow) > 0 {
+			w.Header().Set("Allow", allow)
+			if r.MethodNotAllowed != nil {
+				r.MethodNotAllowed.ServeHTTP(w, req)
+			} else {
+				http.Error(w,
+					http.StatusText(http.StatusMethodNotAllowed),
+					http.StatusMethodNotAllowed,
+				)
+			}
+			return
 		}
 	}
 
