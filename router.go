@@ -78,6 +78,7 @@ package httprouter
 
 import (
 	"net/http"
+	"strings"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
@@ -333,6 +334,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Handle 405
 	if r.HandleMethodNotAllowed {
+		allowedMethods := []string{}
 		for method := range r.trees {
 			// Skip the requested method - we already tried this one
 			if method == req.Method {
@@ -341,17 +343,22 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 			handle, _, _ := r.trees[method].getValue(req.URL.Path)
 			if handle != nil {
-				if r.MethodNotAllowed != nil {
-					r.MethodNotAllowed.ServeHTTP(w, req)
-				} else {
-					http.Error(w,
-						http.StatusText(http.StatusMethodNotAllowed),
-						http.StatusMethodNotAllowed,
-					)
-				}
-				return
+				allowedMethods = append(allowedMethods, method)
 			}
 		}
+		if len(allowedMethods) > 0 {
+			w.Header().Set("Allow", strings.Join(allowedMethods, ","))
+			if r.MethodNotAllowed != nil {
+				r.MethodNotAllowed.ServeHTTP(w, req)
+			} else {
+				http.Error(w,
+					http.StatusText(http.StatusMethodNotAllowed),
+					http.StatusMethodNotAllowed,
+				)
+			}
+			return
+		}
+
 	}
 
 	// Handle 404
