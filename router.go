@@ -338,7 +338,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		var allow string
 		for method := range r.trees {
 			// Skip the requested method - we already tried this one
-			if method == req.Method {
+			if method == req.Method || method == "OPTIONS" {
 				continue
 			}
 
