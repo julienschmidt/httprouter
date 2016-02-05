@@ -234,6 +234,7 @@ func TestRouterNotAllowed(t *testing.T) {
 
 	// add another method
 	router.DELETE("/path", handlerFunc)
+	router.OPTIONS("/path", handlerFunc) // must be ignored
 
 	// test again
 	r, _ = http.NewRequest("GET", "/path", nil)
