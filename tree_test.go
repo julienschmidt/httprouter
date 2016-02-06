@@ -13,7 +13,7 @@ import (
 )
 
 func printChildren(n *node, prefix string) {
-	fmt.Printf(" %02d:%02d %s%s[%d] %v %t %d \r\n", n.priority, n.maxParams, prefix, n.path, len(n.children), n.handle, n.wildChild, n.nType)
+	fmt.Printf(" %02d:%02d %s%s[%d] %v %t %d %v \r\n", n.priority, n.maxParams, prefix, n.path, len(n.children), n.handle, n.wildChild, n.nType, n.paramName)
 	for l := len(n.path); l > 0; l-- {
 		prefix += " "
 	}
@@ -104,10 +104,12 @@ func checkMaxParams(t *testing.T, n *node) uint8 {
 }
 
 func TestCountParams(t *testing.T) {
-	if countParams("/path/:param1/static/*catch-all") != 2 {
+	if c, str := countAndGetParams("/path/:param1/static/*catch-all"); c != 2 ||
+		len(str) != 2 || str[0] != "params" && str[1] != "catch-all" {
 		t.Fail()
 	}
-	if countParams(strings.Repeat("/:param", 256)) != 255 {
+	if c, str := countAndGetParams(strings.Repeat("/:param", 256)); c != 255 ||
+		len(str) != 255 {
 		t.Fail()
 	}
 }
@@ -168,6 +170,7 @@ func TestTreeWildcard(t *testing.T) {
 		"/doc/",
 		"/doc/go_faq.html",
 		"/doc/go1.html",
+		"/info/:group/members",
 		"/info/:user/public",
 		"/info/:user/project/:project",
 	}
@@ -190,6 +193,7 @@ func TestTreeWildcard(t *testing.T) {
 		{"/user_gopher", false, "/user_:name", Params{Param{"name", "gopher"}}},
 		{"/user_gopher/about", false, "/user_:name/about", Params{Param{"name", "gopher"}}},
 		{"/files/js/inc/framework.js", false, "/files/:dir/*filepath", Params{Param{"dir", "js"}, Param{"filepath", "/inc/framework.js"}}},
+		{"/info/teamA/members", false, "/info/:group/members", Params{Param{"group", "teamA"}}},
 		{"/info/gordon/public", false, "/info/:user/public", Params{Param{"user", "gordon"}}},
 		{"/info/gordon/project/go", false, "/info/:user/project/:project", Params{Param{"user", "gordon"}, Param{"project", "go"}}},
 	})
@@ -263,6 +267,7 @@ func TestTreeChildConflict(t *testing.T) {
 		{"/user_:name", true},
 		{"/id/:id", false},
 		{"/id:id", true},
+		{"/upload/:file", false},
 		{"/:id", true},
 		{"/*filepath", true},
 	}
@@ -272,27 +277,29 @@ func TestTreeChildConflict(t *testing.T) {
 func TestTreeDupliatePath(t *testing.T) {
 	tree := &node{}
 
-	routes := [...]string{
-		"/",
-		"/doc/",
-		"/src/*filepath",
-		"/search/:query",
-		"/user_:name",
+	test_routes := [...][]string{
+		{"/"},
+		{"/doc/"},
+		{"/src/*filepath", "/src/*other"},
+		{"/search/:query"},
+		{"/user_:name", "/user_:other"},
 	}
-	for _, route := range routes {
+	for _, test_route := range test_routes {
 		recv := catchPanic(func() {
-			tree.addRoute(route, fakeHandler(route))
+			tree.addRoute(test_route[0], fakeHandler(test_route[0]))
 		})
 		if recv != nil {
-			t.Fatalf("panic inserting route '%s': %v", route, recv)
+			t.Fatalf("panic inserting route '%s': %v", test_route[0], recv)
 		}
 
-		// Add again
-		recv = catchPanic(func() {
-			tree.addRoute(route, nil)
-		})
-		if recv == nil {
-			t.Fatalf("no panic while inserting duplicate route '%s", route)
+		// Add again the first, and add the other routes
+		for _, route := range test_route {
+			recv = catchPanic(func() {
+				tree.addRoute(route, nil)
+			})
+			if recv == nil {
+				t.Fatalf("no panic while inserting duplicate route '%s", route)
+			}
 		}
 	}
 
