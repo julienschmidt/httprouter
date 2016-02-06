@@ -7,6 +7,7 @@ package httprouter
 import (
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 func min(a, b int) int {
@@ -447,34 +448,64 @@ walk: // Outer loop for walking the tree
 // It returns the case-corrected path and a bool indicating whether the lookup
 // was successful.
 func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPath []byte, found bool) {
-	ciPath = make([]byte, 0, len(path)+1) // preallocate enough memory
+	return n.findCaseInsensitivePathRec(
+		path,
+		strings.ToLower(path),
+		make([]byte, 0, len(path)+1), // preallocate enough memory for new path
+		[4]byte{},                    // empty rune buffer
+		fixTrailingSlash,
+	)
+}
+
+func (n *node) findCaseInsensitivePathRec(path, loPath string, ciPath []byte, rb [4]byte, fixTrailingSlash bool) ([]byte, bool) {
+	loNPath := strings.ToLower(n.path)
 
 	// Outer loop for walking the tree
-	for len(path) >= len(n.path) && strings.ToLower(path[:len(n.path)]) == strings.ToLower(n.path) {
-		path = path[len(n.path):]
+	for len(loPath) >= len(loNPath) && loPath[:len(loNPath)] == loNPath {
+		// add common path to result
 		ciPath = append(ciPath, n.path...)
+
+		path = path[len(n.path):]
+		loPath = loPath[len(loNPath):]
 
 		if len(path) > 0 {
 			// If this node does not have a wildcard (param or catchAll) child,
 			// we can just look up the next child node and continue to walk down
 			// the tree
 			if !n.wildChild {
-				r := unicode.ToLower(rune(path[0]))
-				for i, index := range n.indices {
-					// must use recursive approach since both index and
-					// ToLower(index) could exist. We must check both.
-					if r == unicode.ToLower(index) {
-						out, found := n.children[i].findCaseInsensitivePath(path, fixTrailingSlash)
-						if found {
-							return append(ciPath, out...), true
-						}
+				// get lowercase and uppercase runes
+				var lr, ur [4]byte
+				if rb[0] != 0 {
+					// old rune not finished
+					lr = rb
+				} else {
+					// start a new rune
+					rv, _ := utf8.DecodeRuneInString(loPath)
+					utf8.EncodeRune(lr[:], rv)
+					utf8.EncodeRune(ur[:], unicode.ToUpper(rv))
+				}
+
+				for i := 0; i < len(n.indices); i++ {
+					// must use recursive approach since both the uppercase
+					// byte and the lowercase byte might exist as an index.
+					if idx := n.indices[i]; idx == lr[0] {
+						rb = lr // lowercase matches
+					} else if idx == ur[0] {
+						rb = ur // uppercase matches
+					} else {
+						continue // no match, try next index
+					}
+
+					if out, found := n.children[i].findCaseInsensitivePathRec(
+						path, loPath, ciPath,
+						[4]byte{rb[1], rb[2], rb[3], 0}, fixTrailingSlash); found {
+						return out, true
 					}
 				}
 
 				// Nothing found. We can recommend to redirect to the same URL
 				// without a trailing slash if a leaf exists for that path
-				found = (fixTrailingSlash && path == "/" && n.handle != nil)
-				return
+				return ciPath, (fixTrailingSlash && path == "/" && n.handle != nil)
 			}
 
 			n = n.children[0]
@@ -492,8 +523,11 @@ func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPa
 				// we need to go deeper!
 				if k < len(path) {
 					if len(n.children) > 0 {
+						// continue with child node
 						path = path[k:]
+						loPath = loPath[k:]
 						n = n.children[0]
+						loNPath = strings.ToLower(n.path)
 						continue
 					}
 
@@ -501,7 +535,7 @@ func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPa
 					if fixTrailingSlash && len(path) == k+1 {
 						return ciPath, true
 					}
-					return
+					return ciPath, false
 				}
 
 				if n.handle != nil {
@@ -514,7 +548,7 @@ func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPa
 						return append(ciPath, '/'), true
 					}
 				}
-				return
+				return ciPath, false
 
 			case catchAll:
 				return append(ciPath, path...), true
@@ -539,11 +573,11 @@ func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPa
 							(n.nType == catchAll && n.children[0].handle != nil) {
 							return append(ciPath, '/'), true
 						}
-						return
+						return ciPath, false
 					}
 				}
 			}
-			return
+			return ciPath, false
 		}
 	}
 
@@ -554,10 +588,10 @@ func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPa
 			return ciPath, true
 		}
 		if len(path)+1 == len(n.path) && n.path[len(path)] == '/' &&
-			strings.ToLower(path) == strings.ToLower(n.path[:len(path)]) &&
+			loPath == loNPath[:len(loPath)] &&
 			n.handle != nil {
 			return append(ciPath, n.path...), true
 		}
 	}
-	return
+	return ciPath, false
 }
