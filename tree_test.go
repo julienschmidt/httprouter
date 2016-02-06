@@ -502,6 +502,10 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		"/doc/go/away",
 		"/no/a",
 		"/no/b",
+		"/Π",
+		"/apfêl/",
+		"/äpfêl/",
+		"/öpfêl",
 	}
 
 	for _, route := range routes {
@@ -580,6 +584,12 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		{"/DOC/", "/doc", true, true},
 		{"/NO", "", false, true},
 		{"/DOC/GO", "", false, true},
+		{"/π", "/Π", true, false},
+		{"/π/", "/Π", true, true},
+		{"/ÄPFÊL/", "/äpfêl/", true, false},
+		{"/ÄPFÊL", "/äpfêl/", true, true},
+		{"/ÖPFÊL/", "/öpfêl", true, true},
+		{"/ÖPFÊL", "/öpfêl", true, false},
 	}
 	// With fixTrailingSlash = true
 	for _, test := range tests {
