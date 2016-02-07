@@ -321,7 +321,7 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
 func (n *node) getValue(path string) (handle Handle, p Params, tsr bool) {
-walk: // Outer loop for walking the tree
+walk: // outer loop for walking the tree
 	for {
 		if len(path) > len(n.path) {
 			if path[:len(n.path)] == n.path {
@@ -476,6 +476,7 @@ func shiftNRuneBytes(rb [4]byte, n int) [4]byte {
 func (n *node) findCaseInsensitivePathRec(path, loPath string, ciPath []byte, rb [4]byte, fixTrailingSlash bool) ([]byte, bool) {
 	loNPath := strings.ToLower(n.path)
 
+walk: // outer loop for walking the tree
 	for len(loPath) >= len(loNPath) && (len(loNPath) == 0 || loPath[1:len(loNPath)] == loNPath[1:]) {
 		// add common path to result
 		ciPath = append(ciPath, n.path...)
@@ -495,11 +496,15 @@ func (n *node) findCaseInsensitivePathRec(path, loPath string, ciPath []byte, rb
 					// old rune not finished
 					for i := 0; i < len(n.indices); i++ {
 						if n.indices[i] == rb[0] {
-							if out, found := n.children[i].findCaseInsensitivePathRec(
+							// continue with child node
+							n = n.children[i]
+							loNPath = strings.ToLower(n.path)
+							continue walk
+							/*if out, found := n.children[i].findCaseInsensitivePathRec(
 								path, loPath, ciPath, rb, fixTrailingSlash,
 							); found {
 								return out, true
-							}
+							}*/
 						}
 					}
 				} else {
@@ -523,16 +528,18 @@ func (n *node) findCaseInsensitivePathRec(path, loPath string, ciPath []byte, rb
 					// skipp already processed bytes
 					rb = shiftNRuneBytes(rb, off)
 
-					// must use recursive approach since both the uppercase
-					// byte and the lowercase byte might exist as an index
 					for i := 0; i < len(n.indices); i++ {
 						// lowercase matches
 						if n.indices[i] == rb[0] {
+							// must use a recursive approach since both the
+							// uppercase byte and the lowercase byte might exist
+							// as an index
 							if out, found := n.children[i].findCaseInsensitivePathRec(
 								path, loPath, ciPath, rb, fixTrailingSlash,
 							); found {
 								return out, true
 							}
+							break
 						}
 					}
 
@@ -544,11 +551,10 @@ func (n *node) findCaseInsensitivePathRec(path, loPath string, ciPath []byte, rb
 						for i := 0; i < len(n.indices); i++ {
 							// uppercase matches
 							if n.indices[i] == rb[0] {
-								if out, found := n.children[i].findCaseInsensitivePathRec(
-									path, loPath, ciPath, rb, fixTrailingSlash,
-								); found {
-									return out, true
-								}
+								// continue with child node
+								n = n.children[i]
+								loNPath = strings.ToLower(n.path)
+								continue walk
 							}
 						}
 					}
