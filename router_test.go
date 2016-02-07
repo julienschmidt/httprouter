@@ -76,7 +76,8 @@ func (h handlerStruct) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestRouterAPI(t *testing.T) {
-	var get, head, options, post, put, patch, delete, handler, handlerFunc bool
+	var get, head, options, post, put, patch, delete bool
+	var handle, handler, handlerFunc1, handlerFunc2 bool
 
 	httpHandler := handlerStruct{&handler}
 
@@ -102,10 +103,16 @@ func TestRouterAPI(t *testing.T) {
 	router.DELETE("/DELETE", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		delete = true
 	})
-	router.Handler("GET", "/Handler", httpHandler)
-	router.HandlerFunc("GET", "/HandlerFunc", func(w http.ResponseWriter, r *http.Request) {
-		handlerFunc = true
+	router.Handle("GET", "/Handle", Handle(func(w http.ResponseWriter, r *http.Request, _ Params) {
+		handle = true
+	}))
+	router.Handle("GET", "/Handler", httpHandler)
+	router.Handle("GET", "/HandlerFunc1", func(w http.ResponseWriter, r *http.Request) {
+		handlerFunc1 = true
 	})
+	router.Handle("GET", "/HandlerFunc2", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerFunc2 = true
+	}))
 
 	w := new(mockResponseWriter)
 
@@ -151,16 +158,57 @@ func TestRouterAPI(t *testing.T) {
 		t.Error("routing DELETE failed")
 	}
 
+	r, _ = http.NewRequest("GET", "/Handle", nil)
+	router.ServeHTTP(w, r)
+	if !handle {
+		t.Error("routing Handle failed")
+	}
+
 	r, _ = http.NewRequest("GET", "/Handler", nil)
 	router.ServeHTTP(w, r)
 	if !handler {
 		t.Error("routing Handler failed")
 	}
 
-	r, _ = http.NewRequest("GET", "/HandlerFunc", nil)
+	r, _ = http.NewRequest("GET", "/HandlerFunc1", nil)
 	router.ServeHTTP(w, r)
-	if !handlerFunc {
-		t.Error("routing HandlerFunc failed")
+	if !handlerFunc1 {
+		t.Error("routing HandlerFunc1 failed")
+	}
+
+	r, _ = http.NewRequest("GET", "/HandlerFunc2", nil)
+	router.ServeHTTP(w, r)
+	if !handlerFunc2 {
+		t.Error("routing HandlerFunc2 failed")
+	}
+}
+
+func TestRouterInvalidWrap(t *testing.T) {
+	r := New()
+
+	// nil handle
+	recv := catchPanic(func() {
+		r.Handle("GET", "/nil", nil)
+	})
+	if recv == nil {
+		t.Errorf("no panic when inserting nil handle")
+	}
+
+	// handle which can not be wrapped
+	recv = catchPanic(func() {
+		r.Handle("GET", "/unknown", mockResponseWriter{})
+	})
+	if recv == nil {
+		t.Errorf("no panic when inserting unknown handle")
+	}
+
+	// no wrap func. Router should fall back to default
+	r.Wrap = nil
+	recv = catchPanic(func() {
+		r.Handle("GET", "/wrap", func(w http.ResponseWriter, r *http.Request, _ Params) {})
+	})
+	if recv != nil {
+		t.Errorf("panic when inserting without wrap func")
 	}
 }
 
