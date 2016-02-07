@@ -40,7 +40,7 @@ import (
     "log"
 )
 
-func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func Index(w http.ResponseWriter, r *http.Request) {
     fmt.Fprint(w, "Welcome!\n")
 }
 
@@ -123,15 +123,16 @@ For even better scalability, the child nodes on each tree level are ordered by p
 └-
 ```
 
-## Why doesn't this work with `http.Handler`?
+## Why can't I retrieve parameters with `http.Handler`?
 
-**It does!** The router itself implements the `http.Handler` interface. Moreover the router provides convenient [adapters for `http.Handler`][Router.Handler]s and [`http.HandlerFunc`][Router.HandlerFunc]s which allows them to be used as a [`httprouter.Handle`][Router.Handle] when registering a route. The only disadvantage is, that no parameter values can be retrieved when a `http.Handler` or `http.HandlerFunc` is used, since there is no efficient way to pass the values with the existing function parameters. Therefore [`httprouter.Handle`][Router.Handle] has a third function parameter.
-
-Just try it out for yourself, the usage of HttpRouter is very straightforward. The package is compact and minimalistic, but also probably one of the easiest routers to set up.
+There is no efficient way to pass the values. Therefore [`httprouter.Handle`][Router.Handle] has a third function parameter.
+If you want to access parameters, your have to use the [`httprouter.Handle`][Router.Handle] type for those handles.
 
 ## Where can I find Middleware *X*?
 
 This package just provides a very efficient request router with a few extra features. The router is just a [`http.Handler`][http.Handler], you can chain any http.Handler compatible middleware before the router, for example the [Gorilla handlers](http://www.gorillatoolkit.org/pkg/handlers). Or you could [just write your own](https://justinas.org/writing-http-middleware-in-go/), it's very easy!
+
+Pre- / and postprocessing of requests can be applied by using a custom [`router.Wrap`][Router.Wrap] function.
 
 Alternatively, you could try [a web framework based on HttpRouter](#web-frameworks-based-on-httprouter).
 
@@ -284,3 +285,4 @@ If the HttpRouter is a bit too minimalistic for you, you might try one of the fo
 [Router.NotFound]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.NotFound>
 [Router.PanicHandler]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.PanicHandler>
 [Router.ServeFiles]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.ServeFiles>
+[Router.Wrap]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.Wrap>
