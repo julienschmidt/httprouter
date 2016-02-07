@@ -503,9 +503,15 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		"/no/a",
 		"/no/b",
 		"/Π",
-		"/apfêl/",
-		"/äpfêl/",
-		"/öpfêl",
+		"/u/apfêl/",
+		"/u/äpfêl/",
+		"/u/öpfêl",
+		"/v/Äpfêl/",
+		"/v/Öpfêl",
+		"/w/♬",  // 3 byte
+		"/w/♭/", // 3 byte, last byte differs
+		"/w/𠜎",  // 4 byte
+		"/w/𠜏/", // 4 byte
 	}
 
 	for _, route := range routes {
@@ -586,10 +592,18 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		{"/DOC/GO", "", false, true},
 		{"/π", "/Π", true, false},
 		{"/π/", "/Π", true, true},
-		{"/ÄPFÊL/", "/äpfêl/", true, false},
-		{"/ÄPFÊL", "/äpfêl/", true, true},
-		{"/ÖPFÊL/", "/öpfêl", true, true},
-		{"/ÖPFÊL", "/öpfêl", true, false},
+		{"/u/ÄPFÊL/", "/u/äpfêl/", true, false},
+		{"/u/ÄPFÊL", "/u/äpfêl/", true, true},
+		{"/u/ÖPFÊL/", "/u/öpfêl", true, true},
+		{"/u/ÖPFÊL", "/u/öpfêl", true, false},
+		{"/v/äpfêL/", "/v/Äpfêl/", true, false},
+		{"/v/äpfêL", "/v/Äpfêl/", true, true},
+		{"/v/öpfêL/", "/v/Öpfêl", true, true},
+		{"/v/öpfêL", "/v/Öpfêl", true, false},
+		{"/w/♬/", "/w/♬", true, true},
+		{"/w/♭", "/w/♭/", true, true},
+		{"/w/𠜎/", "/w/𠜎", true, true},
+		{"/w/𠜏", "/w/𠜏/", true, true},
 	}
 	// With fixTrailingSlash = true
 	for _, test := range tests {

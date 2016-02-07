@@ -457,49 +457,100 @@ func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPa
 	)
 }
 
+// shift bytes in array by n bytes left
+func shiftNRuneBytes(rb [4]byte, n int) [4]byte {
+	switch n {
+	case 0:
+		return rb
+	case 1:
+		return [4]byte{rb[1], rb[2], rb[3], 0}
+	case 2:
+		return [4]byte{rb[2], rb[3]}
+	case 3:
+		return [4]byte{rb[3]}
+	default:
+		return [4]byte{}
+	}
+}
+
 func (n *node) findCaseInsensitivePathRec(path, loPath string, ciPath []byte, rb [4]byte, fixTrailingSlash bool) ([]byte, bool) {
 	loNPath := strings.ToLower(n.path)
 
-	// Outer loop for walking the tree
-	for len(loPath) >= len(loNPath) && loPath[:len(loNPath)] == loNPath {
+	for len(loPath) >= len(loNPath) && (len(loNPath) == 0 || loPath[1:len(loNPath)] == loNPath[1:]) {
 		// add common path to result
 		ciPath = append(ciPath, n.path...)
 
-		path = path[len(n.path):]
-		loPath = loPath[len(loNPath):]
+		if path = path[len(n.path):]; len(path) > 0 {
+			loOld := loPath
+			loPath = loPath[len(loNPath):]
 
-		if len(path) > 0 {
 			// If this node does not have a wildcard (param or catchAll) child,
 			// we can just look up the next child node and continue to walk down
 			// the tree
 			if !n.wildChild {
-				// get lowercase and uppercase runes
-				var lr, ur [4]byte
+				// skip rune bytes already processed
+				rb = shiftNRuneBytes(rb, len(loNPath))
+
 				if rb[0] != 0 {
 					// old rune not finished
-					lr = rb
+					for i := 0; i < len(n.indices); i++ {
+						if n.indices[i] == rb[0] {
+							if out, found := n.children[i].findCaseInsensitivePathRec(
+								path, loPath, ciPath, rb, fixTrailingSlash,
+							); found {
+								return out, true
+							}
+						}
+					}
 				} else {
-					// start a new rune
-					rv, _ := utf8.DecodeRuneInString(loPath)
-					utf8.EncodeRune(lr[:], rv)
-					utf8.EncodeRune(ur[:], unicode.ToUpper(rv))
-				}
+					// process a new rune
+					var rv rune
 
-				for i := 0; i < len(n.indices); i++ {
-					// must use recursive approach since both the uppercase
-					// byte and the lowercase byte might exist as an index.
-					if idx := n.indices[i]; idx == lr[0] {
-						rb = lr // lowercase matches
-					} else if idx == ur[0] {
-						rb = ur // uppercase matches
-					} else {
-						continue // no match, try next index
+					// find rune start
+					// runes are up to 4 byte long,
+					// -4 would definitely be another rune
+					var off int
+					for max := min(len(loNPath), 3); off < max; off++ {
+						if i := len(loNPath) - off; utf8.RuneStart(loOld[i]) {
+							// read rune from cached lowercase path
+							rv, _ = utf8.DecodeRuneInString(loOld[i:])
+							break
+						}
 					}
 
-					if out, found := n.children[i].findCaseInsensitivePathRec(
-						path, loPath, ciPath,
-						[4]byte{rb[1], rb[2], rb[3], 0}, fixTrailingSlash); found {
-						return out, true
+					// calculate lowercase bytes of current rune
+					utf8.EncodeRune(rb[:], rv)
+					// skipp already processed bytes
+					rb = shiftNRuneBytes(rb, off)
+
+					// must use recursive approach since both the uppercase
+					// byte and the lowercase byte might exist as an index
+					for i := 0; i < len(n.indices); i++ {
+						// lowercase matches
+						if n.indices[i] == rb[0] {
+							if out, found := n.children[i].findCaseInsensitivePathRec(
+								path, loPath, ciPath, rb, fixTrailingSlash,
+							); found {
+								return out, true
+							}
+						}
+					}
+
+					// same for uppercase rune, if it differs
+					if up := unicode.ToUpper(rv); up != rv {
+						utf8.EncodeRune(rb[:], up)
+						rb = shiftNRuneBytes(rb, off)
+
+						for i := 0; i < len(n.indices); i++ {
+							// uppercase matches
+							if n.indices[i] == rb[0] {
+								if out, found := n.children[i].findCaseInsensitivePathRec(
+									path, loPath, ciPath, rb, fixTrailingSlash,
+								); found {
+									return out, true
+								}
+							}
+						}
 					}
 				}
 
@@ -524,10 +575,10 @@ func (n *node) findCaseInsensitivePathRec(path, loPath string, ciPath []byte, rb
 				if k < len(path) {
 					if len(n.children) > 0 {
 						// continue with child node
-						path = path[k:]
-						loPath = loPath[k:]
 						n = n.children[0]
 						loNPath = strings.ToLower(n.path)
+						loPath = loPath[k:]
+						path = path[k:]
 						continue
 					}
 
@@ -587,9 +638,8 @@ func (n *node) findCaseInsensitivePathRec(path, loPath string, ciPath []byte, rb
 		if path == "/" {
 			return ciPath, true
 		}
-		if len(path)+1 == len(n.path) && n.path[len(path)] == '/' &&
-			loPath == loNPath[:len(loPath)] &&
-			n.handle != nil {
+		if len(loPath)+1 == len(loNPath) && loNPath[len(loPath)] == '/' &&
+			loPath[1:] == loNPath[1:len(loPath)] && n.handle != nil {
 			return append(ciPath, n.path...), true
 		}
 	}
