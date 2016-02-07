@@ -43,7 +43,7 @@ import (
     "github.com/julienschmidt/httprouter"
 )
 
-func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func Index(w http.ResponseWriter, r *http.Request) {
     fmt.Fprint(w, "Welcome!\n")
 }
 
@@ -128,11 +128,11 @@ For even better scalability, the child nodes on each tree level are ordered by p
 └-
 ```
 
-## Why doesn't this work with `http.Handler`?
+## How to retrieve parameters with `http.Handler`?
 
-**It does!** The router itself implements the `http.Handler` interface. Moreover the router provides convenient [adapters for `http.Handler`](https://godoc.org/github.com/julienschmidt/httprouter#Router.Handler)s and [`http.HandlerFunc`](https://godoc.org/github.com/julienschmidt/httprouter#Router.HandlerFunc)s which allows them to be used as a [`httprouter.Handle`](https://godoc.org/github.com/julienschmidt/httprouter#Router.Handle) when registering a route.
+HttpRouter's native [`Handle`](https://godoc.org/github.com/julienschmidt/httprouter#Handle) type has a third function parameter for the parameters, as this is the most efficient way to pass the values.
 
-Named parameters can be accessed `request.Context`:
+When using `http.Handler` or `http.HandlerFunc` as handles, those get automatically wrapped (see [`Wrap`](https://godoc.org/github.com/julienschmidt/httprouter#Wrap) and [`Router.Wrap`](https://godoc.org/github.com/julienschmidt/httprouter#Router.Wrap)). The parameters are then stored in the `request.Context` and can be accessed from there:
 
 ```go
 func Hello(w http.ResponseWriter, r *http.Request) {
@@ -143,8 +143,6 @@ func Hello(w http.ResponseWriter, r *http.Request) {
 ```
 
 Alternatively, one can also use `params := r.Context().Value(httprouter.ParamsKey)` instead of the helper function.
-
-Just try it out for yourself, the usage of HttpRouter is very straightforward. The package is compact and minimalistic, but also probably one of the easiest routers to set up.
 
 ## Automatic OPTIONS responses and CORS
 
@@ -168,6 +166,8 @@ router.GlobalOPTIONS = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 ## Where can I find Middleware *X*?
 
 This package just provides a very efficient request router with a few extra features. The router is just a [`http.Handler`](https://golang.org/pkg/net/http/#Handler), you can chain any http.Handler compatible middleware before the router, for example the [Gorilla handlers](http://www.gorillatoolkit.org/pkg/handlers). Or you could [just write your own](https://justinas.org/writing-http-middleware-in-go/), it's very easy!
+
+Pre- / and postprocessing of requests can be applied by using a custom [`router.Wrap`][Router.Wrap] function.
 
 Alternatively, you could try [a web framework based on HttpRouter](#web-frameworks-based-on-httprouter).
 
