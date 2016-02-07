@@ -88,6 +88,37 @@ import (
 // wildcards (path variables).
 type Handle func(http.ResponseWriter, *http.Request, Params)
 
+// Wrap is the default wrap function to wrap handle types to Handle.
+// Currently Handle, http.Handler and http.HandlerFunc are supported.
+// Opther handle types can be used by setting a custom wrap function.
+func Wrap(handle interface{}) Handle {
+	switch h := handle.(type) {
+	case Handle:
+		return h
+	case func(w http.ResponseWriter, r *http.Request, ps Params):
+		return h
+	case http.HandlerFunc:
+		return handlerFuncAdapter(h)
+	case func(http.ResponseWriter, *http.Request):
+		return handlerFuncAdapter(h)
+	case http.Handler:
+		return handlerFuncAdapter(h.ServeHTTP)
+	default:
+		panic("unknown handle type")
+	}
+}
+
+func handlerFuncAdapter(handlerFunc http.HandlerFunc) Handle {
+	return func(w http.ResponseWriter, req *http.Request, ps Params) {
+		if len(ps) > 0 {
+			ctx := req.Context()
+			ctx = context.WithValue(ctx, ParamsKey, ps)
+			req = req.WithContext(ctx)
+		}
+		handlerFunc(w, req)
+	}
+}
+
 // Param is a single URL parameter, consisting of a key and a value.
 type Param struct {
 	Key   string
@@ -186,6 +217,11 @@ type Router struct {
 	// The handler can be used to keep your server from crashing because of
 	// unrecovered panics.
 	PanicHandler func(http.ResponseWriter, *http.Request, interface{})
+
+	// Function to wrap handle types to Handle. The default function is Wrap.
+	// Custom functions can be used to allow other handle types or apply pre- /
+	// postprocessing of the request.
+	Wrap func(interface{}) Handle
 }
 
 // Make sure the Router conforms with the http.Handler interface
@@ -199,6 +235,7 @@ func New() *Router {
 		RedirectFixedPath:      true,
 		HandleMethodNotAllowed: true,
 		HandleOPTIONS:          true,
+		Wrap:                   Wrap,
 	}
 }
 
@@ -214,39 +251,46 @@ func (r *Router) putParams(ps *Params) {
 	}
 }
 
-// GET is a shortcut for router.Handle(http.MethodGet, path, handle)
-func (r *Router) GET(path string, handle Handle) {
-	r.Handle(http.MethodGet, path, handle)
+// GET is a shortcut for router.Handle(http.MethodGet, path, r.Wrap(handle))
+func (r *Router) GET(path string, handle interface{}) {
+	r.Handle(http.MethodGet, path, r.wrap(handle))
 }
 
-// HEAD is a shortcut for router.Handle(http.MethodHead, path, handle)
-func (r *Router) HEAD(path string, handle Handle) {
-	r.Handle(http.MethodHead, path, handle)
+// HEAD is a shortcut for router.Handle(http.MethodHead, path, r.Wrap(handle))
+func (r *Router) HEAD(path string, handle interface{}) {
+	r.Handle(http.MethodHead, path, r.wrap(handle))
 }
 
-// OPTIONS is a shortcut for router.Handle(http.MethodOptions, path, handle)
-func (r *Router) OPTIONS(path string, handle Handle) {
-	r.Handle(http.MethodOptions, path, handle)
+// OPTIONS is a shortcut for router.Handle(http.MethodOptions, path, r.Wrap(handle))
+func (r *Router) OPTIONS(path string, handle interface{}) {
+	r.Handle(http.MethodOptions, path, r.wrap(handle))
 }
 
-// POST is a shortcut for router.Handle(http.MethodPost, path, handle)
-func (r *Router) POST(path string, handle Handle) {
-	r.Handle(http.MethodPost, path, handle)
+// POST is a shortcut for router.Handle(http.MethodPost, path, r.Wrap(handle))
+func (r *Router) POST(path string, handle interface{}) {
+	r.Handle(http.MethodPost, path, r.wrap(handle))
 }
 
-// PUT is a shortcut for router.Handle(http.MethodPut, path, handle)
-func (r *Router) PUT(path string, handle Handle) {
-	r.Handle(http.MethodPut, path, handle)
+// PUT is a shortcut for router.Handle(http.MethodPut, path, r.Wrap(handle))
+func (r *Router) PUT(path string, handle interface{}) {
+	r.Handle(http.MethodPut, path, r.wrap(handle))
 }
 
-// PATCH is a shortcut for router.Handle(http.MethodPatch, path, handle)
-func (r *Router) PATCH(path string, handle Handle) {
-	r.Handle(http.MethodPatch, path, handle)
+// PATCH is a shortcut for router.Handle(http.MethodPatch, path, r.Wrap(handle))
+func (r *Router) PATCH(path string, handle interface{}) {
+	r.Handle(http.MethodPatch, path, r.wrap(handle))
 }
 
-// DELETE is a shortcut for router.Handle(http.MethodDelete, path, handle)
-func (r *Router) DELETE(path string, handle Handle) {
-	r.Handle(http.MethodDelete, path, handle)
+// DELETE is a shortcut for router.Handle(http.MethodDelete, path, r.Wrap(handle))
+func (r *Router) DELETE(path string, handle interface{}) {
+	r.Handle(http.MethodDelete, path, r.wrap(handle))
+}
+
+func (r *Router) wrap(handle interface{}) Handle {
+	if r.Wrap == nil {
+		r.Wrap = Wrap
+	}
+	return r.Wrap(handle)
 }
 
 // Handle registers a new request handle with the given path and method.
@@ -300,22 +344,13 @@ func (r *Router) Handle(method, path string, handle Handle) {
 // request handle.
 // The Params are available in the request context under ParamsKey.
 func (r *Router) Handler(method, path string, handler http.Handler) {
-	r.Handle(method, path,
-		func(w http.ResponseWriter, req *http.Request, p Params) {
-			if len(p) > 0 {
-				ctx := req.Context()
-				ctx = context.WithValue(ctx, ParamsKey, p)
-				req = req.WithContext(ctx)
-			}
-			handler.ServeHTTP(w, req)
-		},
-	)
+	r.Handle(method, path, handlerFuncAdapter(handler.ServeHTTP))
 }
 
 // HandlerFunc is an adapter which allows the usage of an http.HandlerFunc as a
 // request handle.
 func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
-	r.Handler(method, path, handler)
+	r.Handle(method, path, handlerFuncAdapter(handler))
 }
 
 // ServeFiles serves files from the given file system root.
