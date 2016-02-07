@@ -473,6 +473,7 @@ func shiftNRuneBytes(rb [4]byte, n int) [4]byte {
 	}
 }
 
+// recursive case-insensitive lookup function used by n.findCaseInsensitivePath
 func (n *node) findCaseInsensitivePathRec(path, loPath string, ciPath []byte, rb [4]byte, fixTrailingSlash bool) ([]byte, bool) {
 	loNPath := strings.ToLower(n.path)
 
@@ -500,11 +501,6 @@ walk: // outer loop for walking the tree
 							n = n.children[i]
 							loNPath = strings.ToLower(n.path)
 							continue walk
-							/*if out, found := n.children[i].findCaseInsensitivePathRec(
-								path, loPath, ciPath, rb, fixTrailingSlash,
-							); found {
-								return out, true
-							}*/
 						}
 					}
 				} else {
