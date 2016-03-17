@@ -294,14 +294,12 @@ func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
 }
 
 func (r *Router) allowed(path, reqMethod string) (allow string) {
-	for method := range r.trees {
-		// Skip the requested method - we already tried this one
-		if method == reqMethod || method == "OPTIONS" {
-			continue
-		}
+	if path == "*" { // server-wide
+		for method := range r.trees {
+			if method == "OPTIONS" {
+				continue
+			}
 
-		handle, _, _ := r.trees[method].getValue(path)
-		if handle != nil {
 			// add request method to list of allowed methods
 			if len(allow) == 0 {
 				allow = method
@@ -309,6 +307,26 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 				allow += ", " + method
 			}
 		}
+	} else { // specific path
+		for method := range r.trees {
+			// Skip the requested method - we already tried this one
+			if method == reqMethod || method == "OPTIONS" {
+				continue
+			}
+
+			handle, _, _ := r.trees[method].getValue(path)
+			if handle != nil {
+				// add request method to list of allowed methods
+				if len(allow) == 0 {
+					allow = method
+				} else {
+					allow += ", " + method
+				}
+			}
+		}
+	}
+	if len(allow) > 0 {
+		allow += ", OPTIONS"
 	}
 	return
 }
@@ -361,24 +379,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "OPTIONS" {
 		// Handle OPTIONS requests
 		if r.HandleOPTIONS {
-			var allow string
-			if path == "*" { // server OPTIONS
-				for method := range r.trees {
-					if method == "OPTIONS" {
-						continue
-					}
-
-					// add request method to list of allowed methods
-					if len(allow) == 0 {
-						allow = method
-					} else {
-						allow += ", " + method
-					}
-				}
-			} else { // path OPTIONS
-				allow = r.allowed(path, req.Method)
-			}
-			if len(allow) > 0 {
+			if allow := r.allowed(path, req.Method); len(allow) > 0 {
 				w.Header().Set("Allow", allow)
 				return
 			}
