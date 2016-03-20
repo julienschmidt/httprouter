@@ -501,8 +501,6 @@ func (mfs *mockFileSystem) Open(name string) (http.File, error) {
 }
 
 func TestRouterServeFiles(t *testing.T) {
-	// TODO: fix this, but currently crashes
-	t.Skip("Not doing this right now")
 	router := New()
 	mfs := &mockFileSystem{}
 

@@ -251,7 +251,7 @@ func (r *Router) ServeFiles(path string, root http.FileSystem) {
 	fileServer := http.FileServer(root)
 
 	r.GET(path, func(ctx context.Context, w http.ResponseWriter, req *http.Request) {
-		req.URL.Path = ctx.Value("*filepath").(string)
+		req.URL.Path = ctx.Value("filepath").(string)
 		fileServer.ServeHTTP(w, req)
 	})
 }
