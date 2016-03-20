@@ -259,31 +259,3 @@ router.NotFound = http.FileServer(http.Dir("public"))
 
 But this approach sidesteps the strict core rules of this router to avoid routing problems. A cleaner approach is to use a distinct sub-path for serving files, like `/static/*filepath` or `/files/*filepath`.
 
-## Web Frameworks based on HttpRouter
-
-If the HttpRouter is a bit too minimalistic for you, you might try one of the following more high-level 3rd-party web frameworks building upon the HttpRouter package:
-
-* [Ace](https://github.com/plimble/ace): Blazing fast Go Web Framework
-* [api2go](https://github.com/manyminds/api2go): A JSON API Implementation for Go
-* [Gin](https://github.com/gin-gonic/gin): Features a martini-like API with much better performance
-* [Goat](https://github.com/bahlo/goat): A minimalistic REST API server in Go
-* [Hikaru](https://github.com/najeira/hikaru): Supports standalone and Google AppEngine
-* [Hitch](https://github.com/nbio/hitch): Hitch ties httprouter, [httpcontext](https://github.com/nbio/httpcontext), and middleware up in a bow
-* [httpway](https://github.com/corneldamian/httpway): Simple middleware extension with context for httprouter and a server with gracefully shutdown support
-* [kami](https://github.com/guregu/kami): A tiny web framework using x/net/context
-* [Medeina](https://github.com/imdario/medeina): Inspired by Ruby's Roda and Cuba
-* [Neko](https://github.com/rocwong/neko): A lightweight web application framework for Golang
-* [Roxanna](https://github.com/iamthemuffinman/Roxanna): An amalgamation of httprouter, better logging, and hot reload
-* [siesta](https://github.com/VividCortex/siesta): Composable HTTP handlers with contexts
-* [xmux](https://github.com/rs/xmux): xmux is a httprouter fork on top of xhandler (net/context aware)
-
-[benchmark]: <https://github.com/julienschmidt/go-http-routing-benchmark>
-[http.Handler]: <https://golang.org/pkg/net/http/#Handler
-[http.ServeMux]: <https://golang.org/pkg/net/http/#ServeMux>
-[Router.Handle]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.Handle>
-[Router.HandleMethodNotAllowed]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.HandleMethodNotAllowed>
-[Router.Handler]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.Handler>
-[Router.HandlerFunc]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.HandlerFunc>
-[Router.NotFound]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.NotFound>
-[Router.PanicHandler]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.PanicHandler>
-[Router.ServeFiles]: <https://godoc.org/github.com/julienschmidt/httprouter#Router.ServeFiles>
