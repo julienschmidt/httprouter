@@ -1,4 +1,5 @@
 // Copyright 2013 Julien Schmidt. All rights reserved.
+// Copyright 2016 Philipp Klose. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found
 // in the LICENSE file.
 
@@ -8,6 +9,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"golang.org/x/net/context"
 )
 
 func min(a, b int) int {
@@ -320,7 +323,7 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 // If no handle can be found, a TSR (trailing slash redirect) recommendation is
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
-func (n *node) getValue(path string) (handle Handle, p Params, tsr bool) {
+func (n *node) getValue(path string) (handle Handle, ctx context.Context, tsr bool) {
 walk: // outer loop for walking the tree
 	for {
 		if len(path) > len(n.path) {
@@ -357,14 +360,10 @@ walk: // outer loop for walking the tree
 					}
 
 					// save param value
-					if p == nil {
-						// lazy allocation
-						p = make(Params, 0, n.maxParams)
+					if ctx == nil {
+						ctx = context.Background()
 					}
-					i := len(p)
-					p = p[:i+1] // expand slice within preallocated capacity
-					p[i].Key = n.path[1:]
-					p[i].Value = path[:end]
+					ctx = context.WithValue(ctx, n.path[1:], path[:end])
 
 					// we need to go deeper!
 					if end < len(path) {
@@ -392,14 +391,10 @@ walk: // outer loop for walking the tree
 
 				case catchAll:
 					// save param value
-					if p == nil {
-						// lazy allocation
-						p = make(Params, 0, n.maxParams)
+					if ctx == nil {
+						ctx = context.Background()
 					}
-					i := len(p)
-					p = p[:i+1] // expand slice within preallocated capacity
-					p[i].Key = n.path[2:]
-					p[i].Value = path
+					ctx = context.WithValue(ctx, n.path[2:], path)
 
 					handle = n.handle
 					return
