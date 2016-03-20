@@ -1,4 +1,7 @@
-# HttpRouter [![Build Status](https://travis-ci.org/julienschmidt/httprouter.svg?branch=master)](https://travis-ci.org/julienschmidt/httprouter) [![Coverage](http://gocover.io/_badge/github.com/julienschmidt/httprouter?0)](http://gocover.io/github.com/julienschmidt/httprouter) [![GoDoc](https://godoc.org/github.com/julienschmidt/httprouter?status.svg)](http://godoc.org/github.com/julienschmidt/httprouter)
+# HttpRouter 
+[![Build Status](https://travis-ci.org/TheHippo/httprouterc.svg?branch=master)](https://travis-ci.org/TheHippo/httprouterc)
+[![Coverage](http://gocover.io/_badge/github.com/TheHippo/httprouterc?0)](http://gocover.io/github.com/TheHippo/httprouterc)
+[![GoDoc](https://godoc.org/github.com/TheHippo/httprouterc?status.svg)](http://godoc.org/github.com/TheHippo/httprouterc)
 
 HttpRouter is a lightweight high performance HTTP request router (also called *multiplexer* or just *mux* for short) for [Go](https://golang.org/).
 
@@ -10,7 +13,7 @@ The router is optimized for high performance and a small memory footprint. It sc
 
 **Only explicit matches:** With other routers, like [`http.ServeMux`][http.ServeMux], a requested URL path could match multiple patterns. Therefore they have some awkward pattern priority rules, like *longest match* or *first registered, first matched*. By design of this router, a request can only match exactly one or no route. As a result, there are also no unintended matches, which makes it great for SEO and improves the user experience.
 
-**Stop caring about trailing slashes:** Choose the URL style you like, the router automatically redirects the client if a trailing slash is missing or if there is one extra. Of course it only does so, if the new path has a handler. If you don't like it, you can [turn off this behavior](https://godoc.org/github.com/julienschmidt/httprouter#Router.RedirectTrailingSlash).
+**Stop caring about trailing slashes:** Choose the URL style you like, the router automatically redirects the client if a trailing slash is missing or if there is one extra. Of course it only does so, if the new path has a handler. If you don't like it, you can [turn off this behavior](https://godoc.org/github.com/TheHippo/httprouterc#Router.RedirectTrailingSlash).
 
 **Path auto-correction:** Besides detecting the missing or additional trailing slash at no extra cost, the router can also fix wrong cases and remove superfluous path elements (like `../` or `//`). Is [CAPTAIN CAPS LOCK](http://www.urbandictionary.com/define.php?term=Captain+Caps+Lock) one of your users? HttpRouter can help him by making a case-insensitive look-up and redirecting him to the correct URL.
 
@@ -24,11 +27,11 @@ The router is optimized for high performance and a small memory footprint. It sc
 
 **Perfect for APIs:** The router design encourages to build sensible, hierarchical RESTful APIs. Moreover it has builtin native support for [OPTIONS requests](http://zacstewart.com/2012/04/14/http-options-method.html) and `405 Method Not Allowed` replies.
 
-Of course you can also set **custom [`NotFound`][Router.NotFound] and  [`MethodNotAllowed`](https://godoc.org/github.com/julienschmidt/httprouter#Router.MethodNotAllowed) handlers** and [**serve static files**][Router.ServeFiles].
+Of course you can also set **custom [`NotFound`][Router.NotFound] and  [`MethodNotAllowed`](https://godoc.org/github.com/TheHippo/httprouterc#Router.MethodNotAllowed) handlers** and [**serve static files**][Router.ServeFiles].
 
 ## Usage
 
-This is just a quick introduction, view the [GoDoc](http://godoc.org/github.com/julienschmidt/httprouter) for details.
+This is just a quick introduction, view the [GoDoc](http://godoc.org/github.com/TheHippo/httprouterc) for details.
 
 Let's start with a trivial example:
 
@@ -37,7 +40,7 @@ package main
 
 import (
     "fmt"
-    "github.com/julienschmidt/httprouter"
+    "github.com/TheHippo/httprouterc"
     "net/http"
     "log"
 )
@@ -51,7 +54,7 @@ func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
 
 func main() {
-    router := httprouter.New()
+    router := httprouterc.New()
     router.GET("/", Index)
     router.GET("/hello/:name", Hello)
 
@@ -59,22 +62,6 @@ func main() {
 }
 ```
 
-### Named parameters
-
-As you can see, `:name` is a *named parameter*. The values are accessible via `httprouter.Params`, which is just a slice of `httprouter.Param`s. You can get the value of a parameter either by its index in the slice, or by using the `ByName(name)` method: `:name` can be retrived by `ByName("name")`.
-
-Named parameters only match a single path segment:
-
-```
-Pattern: /user/:user
-
- /user/gordon              match
- /user/you                 match
- /user/gordon/profile      no match
- /user/                    no match
-```
-
-**Note:** Since this router has only explicit matches, you can not register static routes and parameters for the same path segment. For example you can not register the patterns `/user/new` and `/user/:user` for the same request method at the same time. The routing of different request methods is independent from each other.
 
 ### Catch-All parameters
 
@@ -163,7 +150,7 @@ func (hs HostSwitch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// Initialize a router as usual
-	router := httprouter.New()
+	router := httprouterc.New()
 	router.GET("/", Index)
 	router.GET("/hello/:name", Hello)
 
@@ -188,7 +175,7 @@ import (
     "bytes"
     "encoding/base64"
     "fmt"
-    "github.com/julienschmidt/httprouter"
+    "github.com/TheHippo/httprouterc"
     "net/http"
     "log"
     "strings"
@@ -234,7 +221,7 @@ func main() {
     user := []byte("gordon")
     pass := []byte("secret!")
     
-    router := httprouter.New()
+    router := httprouterc.New()
     router.GET("/", Index)
     router.GET("/protected/", BasicAuth(Protected, user, pass))
 
