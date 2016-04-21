@@ -40,23 +40,26 @@ type testRequests []struct {
 
 func checkRequests(t *testing.T, tree *node, requests testRequests) {
 	for _, request := range requests {
-		handler, ps, _ := tree.getValue(request.path)
+		handler, matchPath, ps, _ := tree.getValue(request.path)
 
 		if handler == nil {
 			if !request.nilHandler {
-				t.Errorf("handle mismatch for route '%s': Expected non-nil handle", request.path)
+				t.Errorf("handle mismatch for route %q: Expected non-nil handle", request.path)
 			}
 		} else if request.nilHandler {
-			t.Errorf("handle mismatch for route '%s': Expected nil handle", request.path)
+			t.Errorf("handle mismatch for route %q: Expected nil handle", request.path)
 		} else {
 			handler(nil, nil, nil)
-			if fakeHandlerValue != request.route {
-				t.Errorf("handle mismatch for route '%s': Wrong handle (%s != %s)", request.path, fakeHandlerValue, request.route)
+			if matchPath != request.route {
+				t.Errorf("handle mismatch for route %q: Wrong handle (%q != %q)", request.path, matchPath, request.route)
+			}
+			if matchPath != fakeHandlerValue {
+				t.Errorf("handler mismatch for route %q: (%q != %q)", request.path, matchPath, fakeHandlerValue)
 			}
 		}
 
 		if !reflect.DeepEqual(ps, request.ps) {
-			t.Errorf("Params mismatch for route '%s'", request.path)
+			t.Errorf("Params mismatch for route %q", request.path)
 		}
 	}
 }
@@ -432,7 +435,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/doc/",
 	}
 	for _, route := range tsrRoutes {
-		handler, _, tsr := tree.getValue(route)
+		handler, _, _, tsr := tree.getValue(route)
 		if handler != nil {
 			t.Fatalf("non-nil handler for TSR route '%s", route)
 		} else if !tsr {
@@ -449,7 +452,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/api/world/abc",
 	}
 	for _, route := range noTsrRoutes {
-		handler, _, tsr := tree.getValue(route)
+		handler, _, _, tsr := tree.getValue(route)
 		if handler != nil {
 			t.Fatalf("non-nil handler for No-TSR route '%s", route)
 		} else if tsr {
@@ -468,7 +471,7 @@ func TestTreeRootTrailingSlashRedirect(t *testing.T) {
 		t.Fatalf("panic inserting test route: %v", recv)
 	}
 
-	handler, _, tsr := tree.getValue("/")
+	handler, _, _, tsr := tree.getValue("/")
 	if handler != nil {
 		t.Fatalf("non-nil handler")
 	} else if tsr {
