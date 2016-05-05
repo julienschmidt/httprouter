@@ -46,24 +46,30 @@ func TestParams(t *testing.T) {
 }
 
 func TestRouter(t *testing.T) {
-	router := New()
+	testNames := map[string]Params{
+		"gopher":   Params{Param{"name", "gopher"}},
+		"go%2f1.6": Params{Param{"name", "go/1.6"}},
+	}
 
-	routed := false
-	router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, ps Params) {
-		routed = true
-		want := Params{Param{"name", "gopher"}}
-		if !reflect.DeepEqual(ps, want) {
-			t.Fatalf("wrong wildcard values: want %v, got %v", want, ps)
+	for name, want := range testNames {
+		router := New()
+
+		routed := false
+		router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, ps Params) {
+			routed = true
+			if !reflect.DeepEqual(ps, want) {
+				t.Fatalf("wrong wildcard values: want %v, got %v", want, ps)
+			}
+		})
+
+		w := new(mockResponseWriter)
+
+		req, _ := http.NewRequest("GET", "/user/" + name, nil)
+		router.ServeHTTP(w, req)
+
+		if !routed {
+			t.Fatal("routing failed")
 		}
-	})
-
-	w := new(mockResponseWriter)
-
-	req, _ := http.NewRequest("GET", "/user/gopher", nil)
-	router.ServeHTTP(w, req)
-
-	if !routed {
-		t.Fatal("routing failed")
 	}
 }
 

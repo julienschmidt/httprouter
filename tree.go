@@ -364,7 +364,7 @@ walk: // outer loop for walking the tree
 					i := len(p)
 					p = p[:i+1] // expand slice within preallocated capacity
 					p[i].Key = n.path[1:]
-					p[i].Value = path[:end]
+					p[i].Value = unencode(path[:end])
 
 					// we need to go deeper!
 					if end < len(path) {
@@ -646,4 +646,43 @@ walk: // outer loop for walking the tree
 		}
 	}
 	return ciPath, false
+}
+
+func unencode(s string) string {
+	unencoded := make([]byte, len(s))
+	j := 0
+	for i := 0; i < len(s); j++ {
+		if s[i] == '%' && i+2 < len(s) && ishex(s[i+1]) && ishex(s[i+2]) {
+			unencoded[j] = unhex(s[i+1])<<4 | unhex(s[i+2])
+			i += 3
+		} else {
+			unencoded[j] = s[i]
+			i++
+		}
+	}
+	return string(unencoded[:j])
+}
+
+func ishex(c byte) bool {
+	switch {
+	case '0' <= c && c <= '9':
+		return true
+	case 'a' <= c && c <= 'f':
+		return true
+	case 'A' <= c && c <= 'F':
+		return true
+	}
+	return false
+}
+
+func unhex(c byte) byte {
+	switch {
+	case '0' <= c && c <= '9':
+		return c - '0'
+	case 'a' <= c && c <= 'f':
+		return c - 'a' + 10
+	case 'A' <= c && c <= 'F':
+		return c - 'A' + 10
+	}
+	return 0
 }
