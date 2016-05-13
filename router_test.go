@@ -48,7 +48,7 @@ func TestParams(t *testing.T) {
 func TestRouter(t *testing.T) {
 	testNames := map[string]Params{
 		"gopher":   Params{Param{"name", "gopher"}},
-		"go%2f1.6": Params{Param{"name", "go/1.6"}}, // This case will fail in go1.4 and earlier
+		"go%2f1.6": Params{Param{"name", "go/1.6"}},
 	}
 
 	for name, want := range testNames {
@@ -65,6 +65,7 @@ func TestRouter(t *testing.T) {
 		w := new(mockResponseWriter)
 
 		req, _ := http.NewRequest("GET", "/user/" + name, nil)
+		req.RequestURI = "/user/" + name // Manually populate RequestURI to simulate a server request
 		router.ServeHTTP(w, req)
 
 		if !routed {
