@@ -48,7 +48,7 @@ func TestParams(t *testing.T) {
 func TestRouter(t *testing.T) {
 	testNames := map[string]Params{
 		"gopher":   Params{Param{"name", "gopher"}},
-		"go%2f1.6": Params{Param{"name", "go/1.6"}},
+		"go%2f1.6": Params{Param{"name", "go/1.6"}}, // This case will fail in go1.4 and earlier
 	}
 
 	for name, want := range testNames {
@@ -68,7 +68,7 @@ func TestRouter(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		if !routed {
-			t.Fatal("routing failed")
+			t.Fatal("routing failed on /user/" + name)
 		}
 	}
 }
