@@ -19,7 +19,7 @@ func (r *Router) Handler(method, path string, handler http.Handler) {
 	r.Handle(method, path,
 		func(w http.ResponseWriter, req *http.Request, p Params) {
 			ctx := req.Context()
-			ctx = context.WithContext(ctx, ParamsKey, p)
+			ctx = context.WithValue(ctx, ParamsKey, p)
 			req = req.WithContext(ctx)
 			handler.ServeHTTP(w, req)
 		},
