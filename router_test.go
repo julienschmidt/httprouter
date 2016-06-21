@@ -216,20 +216,127 @@ func TestRouterChaining(t *testing.T) {
 	}
 }
 
+func TestRouterOPTIONS(t *testing.T) {
+	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+
+	router := New()
+	router.POST("/path", handlerFunc)
+
+	// test not allowed
+	// * (server)
+	r, _ := http.NewRequest("OPTIONS", "*", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == http.StatusOK) {
+		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
+	} else if allow := w.Header().Get("Allow"); allow != "POST, OPTIONS" {
+		t.Error("unexpected Allow header value: " + allow)
+	}
+
+	// path
+	r, _ = http.NewRequest("OPTIONS", "/path", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == http.StatusOK) {
+		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
+	} else if allow := w.Header().Get("Allow"); allow != "POST, OPTIONS" {
+		t.Error("unexpected Allow header value: " + allow)
+	}
+
+	r, _ = http.NewRequest("OPTIONS", "/doesnotexist", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == http.StatusNotFound) {
+		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
+	}
+
+	// add another method
+	router.GET("/path", handlerFunc)
+
+	// test again
+	// * (server)
+	r, _ = http.NewRequest("OPTIONS", "*", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == http.StatusOK) {
+		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
+	} else if allow := w.Header().Get("Allow"); allow != "POST, GET, OPTIONS" && allow != "GET, POST, OPTIONS" {
+		t.Error("unexpected Allow header value: " + allow)
+	}
+
+	// path
+	r, _ = http.NewRequest("OPTIONS", "/path", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == http.StatusOK) {
+		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
+	} else if allow := w.Header().Get("Allow"); allow != "POST, GET, OPTIONS" && allow != "GET, POST, OPTIONS" {
+		t.Error("unexpected Allow header value: " + allow)
+	}
+
+	// custom handler
+	var custom bool
+	router.OPTIONS("/path", func(w http.ResponseWriter, r *http.Request, _ Params) {
+		custom = true
+	})
+
+	// test again
+	// * (server)
+	r, _ = http.NewRequest("OPTIONS", "*", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == http.StatusOK) {
+		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
+	} else if allow := w.Header().Get("Allow"); allow != "POST, GET, OPTIONS" && allow != "GET, POST, OPTIONS" {
+		t.Error("unexpected Allow header value: " + allow)
+	}
+	if custom {
+		t.Error("custom handler called on *")
+	}
+
+	// path
+	r, _ = http.NewRequest("OPTIONS", "/path", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == http.StatusOK) {
+		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
+	}
+	if !custom {
+		t.Error("custom handler not called")
+	}
+}
+
 func TestRouterNotAllowed(t *testing.T) {
 	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
 
 	router := New()
 	router.POST("/path", handlerFunc)
 
-	// Test not allowed
+	// test not allowed
 	r, _ := http.NewRequest("GET", "/path", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, r)
 	if !(w.Code == http.StatusMethodNotAllowed) {
 		t.Errorf("NotAllowed handling failed: Code=%d, Header=%v", w.Code, w.Header())
+	} else if allow := w.Header().Get("Allow"); allow != "POST, OPTIONS" {
+		t.Error("unexpected Allow header value: " + allow)
 	}
 
+	// add another method
+	router.DELETE("/path", handlerFunc)
+	router.OPTIONS("/path", handlerFunc) // must be ignored
+
+	// test again
+	r, _ = http.NewRequest("GET", "/path", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == http.StatusMethodNotAllowed) {
+		t.Errorf("NotAllowed handling failed: Code=%d, Header=%v", w.Code, w.Header())
+	} else if allow := w.Header().Get("Allow"); allow != "POST, DELETE, OPTIONS" && allow != "DELETE, POST, OPTIONS" {
+		t.Error("unexpected Allow header value: " + allow)
+	}
+
+	// test custom handler
 	w = httptest.NewRecorder()
 	responseText := "custom method"
 	router.MethodNotAllowed = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -242,6 +349,9 @@ func TestRouterNotAllowed(t *testing.T) {
 	}
 	if w.Code != http.StatusTeapot {
 		t.Errorf("unexpected response code %d want %d", w.Code, http.StatusTeapot)
+	}
+	if allow := w.Header().Get("Allow"); allow != "POST, DELETE, OPTIONS" && allow != "DELETE, POST, OPTIONS" {
+		t.Error("unexpected Allow header value: " + allow)
 	}
 }
 
