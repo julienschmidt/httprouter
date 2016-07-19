@@ -41,29 +41,28 @@ func parseBasicAuth(auth string) (username, password string, ok bool) {
 }
 
 // BasicAuth is the basic auth handler
-func BasicAuth(h fasthttprouter.Handle, requiredUser, requiredPassword string) fasthttprouter.Handle {
-	return fasthttprouter.Handle(func(ctx *fasthttp.RequestCtx, ps fasthttprouter.Params) {
+func BasicAuth(h fasthttp.RequestHandler, requiredUser, requiredPassword string) fasthttp.RequestHandler {
+	return fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) {
 		// Get the Basic Authentication credentials
 		user, password, hasAuth := basicAuth(ctx)
 
 		if hasAuth && user == requiredUser && password == requiredPassword {
 			// Delegate request to the given handle
-			h(ctx, ps)
-		} else {
-			// Request Basic Authentication otherwise
-			ctx.Response.Header.Set("WWW-Authenticate", "Basic realm=Restricted")
-			ctx.Error(fasthttp.StatusMessage(fasthttp.StatusUnauthorized), fasthttp.StatusUnauthorized)
+			h(ctx)
 		}
+		// Request Basic Authentication otherwise
+		ctx.Response.Header.Set("WWW-Authenticate", "Basic realm=Restricted")
+		ctx.Error(fasthttp.StatusMessage(fasthttp.StatusUnauthorized), fasthttp.StatusUnauthorized)
 	})
 }
 
 // Index is the index handler
-func Index(ctx *fasthttp.RequestCtx, _ fasthttprouter.Params) {
+func Index(ctx *fasthttp.RequestCtx) {
 	fmt.Fprint(ctx, "Not protected!\n")
 }
 
 // Protected is the Protected handler
-func Protected(ctx *fasthttp.RequestCtx, _ fasthttprouter.Params) {
+func Protected(ctx *fasthttp.RequestCtx) {
 	fmt.Fprint(ctx, "Protected!\n")
 }
 

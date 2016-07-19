@@ -9,13 +9,13 @@ import (
 )
 
 // Index is the index handler
-func Index(ctx *fasthttp.RequestCtx, _ fasthttprouter.Params) {
+func Index(ctx *fasthttp.RequestCtx) {
 	fmt.Fprint(ctx, "Welcome!\n")
 }
 
 // Hello is the Hello handler
-func Hello(ctx *fasthttp.RequestCtx, ps fasthttprouter.Params) {
-	fmt.Fprintf(ctx, "hello, %s!\n", ps.ByName("name"))
+func Hello(ctx *fasthttp.RequestCtx) {
+	fmt.Fprintf(ctx, "hello, %s!\n", ctx.UserValue("name"))
 }
 
 // HostSwitch is the host-handler map

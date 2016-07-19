@@ -9,18 +9,18 @@ import (
 )
 
 // Index is the index handler
-func Index(ctx *fasthttp.RequestCtx, _ fasthttprouter.Params) {
+func Index(ctx *fasthttp.RequestCtx) {
 	fmt.Fprint(ctx, "Welcome!\n")
 }
 
 // Hello is the Hello handler
-func Hello(ctx *fasthttp.RequestCtx, ps fasthttprouter.Params) {
-	fmt.Fprintf(ctx, "hello, %s!\n", ps.ByName("name"))
+func Hello(ctx *fasthttp.RequestCtx) {
+	fmt.Fprintf(ctx, "hello, %s!\n", ctx.UserValue("name"))
 }
 
 // MultiParams is the multi params handler
-func MultiParams(ctx *fasthttp.RequestCtx, ps fasthttprouter.Params) {
-	fmt.Fprintf(ctx, "hi, %s, %s!\n", ps.ByName("name"), ps.ByName("word"))
+func MultiParams(ctx *fasthttp.RequestCtx) {
+	fmt.Fprintf(ctx, "hi, %s, %s!\n", ctx.UserValue("name"), ctx.UserValue("word"))
 }
 
 func main() {
