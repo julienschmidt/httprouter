@@ -12,7 +12,7 @@ type paramsKey struct{}
 // ParamsKey is the request context key under which URL params are stored.
 //
 // This is only present from go 1.7.
-const ParamsKey = paramsKey{}
+var ParamsKey = paramsKey{}
 
 // Handler is an adapter which allows the usage of an http.Handler as a
 // request handle. With go 1.7+, the Params will be available in the
