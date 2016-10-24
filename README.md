@@ -12,7 +12,7 @@ The router is optimized for high performance and a small memory footprint. It sc
 
 ## Features
 
-**Best Performance:** FastHttpRouter is the **fastest** go web framework in the [go-web-framework-benchmark](https://github.com/smallnest/go-web-framework-benchmark). Even faster than httprouter itself.
+**Best Performance:** FastHttpRouter is one of the **fastest** go web frameworks in the [go-web-framework-benchmark](https://github.com/smallnest/go-web-framework-benchmark). Even faster than httprouter itself.
 
 - Basic Test: The first test case is to mock 0 ms, 10 ms, 100 ms, 500 ms processing time in handlers. The concurrency clients are 5000.
 
@@ -323,4 +323,3 @@ But this approach sidesteps the strict core rules of this router to avoid routin
 If the HttpRouter is a bit too minimalistic for you, you might try one of the following more high-level 3rd-party web frameworks building upon the HttpRouter package:
 
 - Waiting for you to do this...
-
