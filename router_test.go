@@ -608,15 +608,17 @@ func TestRouterNotFound(t *testing.T) {
 		route string
 		code  int
 	}{
-		{"/path/", 301},   // TSR -/
-		{"/dir", 301},     // TSR +/
-		{"/", 200},        // TSR +/
-		{"/PATH", 301},    // Fixed Case
-		{"/DIR", 301},     // Fixed Case
-		{"/PATH/", 301},   // Fixed Case -/
-		{"/DIR/", 301},    // Fixed Case +/
-		{"/../path", 200}, // CleanPath
-		{"/nope", 404},    // NotFound
+		{"/path/", 301},          // TSR -/
+		{"/dir", 301},            // TSR +/
+		{"/", 200},               // TSR +/
+		{"/PATH", 301},           // Fixed Case
+		{"/DIR", 301},            // Fixed Case
+		{"/PATH/", 301},          // Fixed Case -/
+		{"/DIR/", 301},           // Fixed Case +/
+		{"/paTh/?name=foo", 301}, // Fixed Case With Params +/
+		{"/paTh?name=foo", 301},  // Fixed Case With Params +/
+		{"/../path", 200},        // CleanPath
+		{"/nope", 404},           // NotFound
 	}
 
 	s := &fasthttp.Server{

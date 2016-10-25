@@ -314,11 +314,6 @@ func (r *Router) Handler(ctx *fasthttp.RequestCtx) {
 				} else {
 					uri = path + "/"
 				}
-				queryBuf := ctx.URI().QueryString()
-				if len(queryBuf) > 0 {
-					queryBuf = append(queryBuf, questionMark...)
-					uri = uri + string(queryBuf)
-				}
 				ctx.Redirect(uri, code)
 				return
 			}
