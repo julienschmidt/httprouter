@@ -27,7 +27,7 @@ func TestRouter(t *testing.T) {
 		routed = true
 		want := map[string]string{"name": "gopher"}
 
-		if !(ctx.UserValue("name") == want["name"]) {
+		if ctx.UserValue("name") != want["name"] {
 			t.Fatalf("wrong wildcard values: want %v, got %v", want["name"], ctx.UserValue("name"))
 		}
 		ctx.Success("foo/bar", []byte("success"))
@@ -534,7 +534,7 @@ func TestRouterNotAllowed(t *testing.T) {
 		t.Fatalf("Unexpected error when reading response: %s", err)
 	}
 	if !(resp.Header.StatusCode() == fasthttp.StatusMethodNotAllowed) {
-		t.Errorf("NotAllowed handling failed: Code=%d, Header=%v", resp.Header.StatusCode(), resp.Header)
+		t.Errorf("NotAllowed handling failed: Code=%d", resp.Header.StatusCode())
 	} else if allow := string(resp.Header.Peek("Allow")); allow != "POST, OPTIONS" {
 		t.Error("unexpected Allow header value: " + allow)
 	}
@@ -560,7 +560,7 @@ func TestRouterNotAllowed(t *testing.T) {
 		t.Fatalf("Unexpected error when reading response: %s", err)
 	}
 	if !(resp.Header.StatusCode() == fasthttp.StatusMethodNotAllowed) {
-		t.Errorf("NotAllowed handling failed: Code=%d, Header=%v", resp.Header.StatusCode(), resp.Header)
+		t.Errorf("NotAllowed handling failed: Code=%d", resp.Header.StatusCode())
 	} else if allow := string(resp.Header.Peek("Allow")); allow != "POST, DELETE, OPTIONS" && allow != "DELETE, POST, OPTIONS" {
 		t.Error("unexpected Allow header value: " + allow)
 	}

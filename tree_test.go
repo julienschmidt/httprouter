@@ -39,9 +39,11 @@ type testRequests []struct {
 }
 
 func acquarieReqeustCtx(path string) *fasthttp.RequestCtx {
-	fastRequest := fasthttp.Request{}
+	var requestCtx fasthttp.RequestCtx
+	var fastRequest fasthttp.Request
 	fastRequest.SetRequestURI(path)
-	return &fasthttp.RequestCtx{Request:fastRequest}
+	requestCtx.Init(&fastRequest, nil, nil)
+	return &requestCtx
 }
 
 func checkRequests(t *testing.T, tree *node, requests testRequests) {
@@ -63,7 +65,7 @@ func checkRequests(t *testing.T, tree *node, requests testRequests) {
 		}
 
 		for expectedKey, expectedVal := range request.ps {
-			if (requestCtx.UserValue(expectedKey) != expectedVal) {
+			if requestCtx.UserValue(expectedKey) != expectedVal {
 				t.Errorf(" mismatch for route '%s'", request.path)
 			}
 		}
