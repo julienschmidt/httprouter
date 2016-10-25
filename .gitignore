@@ -1,5 +1,6 @@
 *.swp
 
+coverage.out
 examples/basic/basic
 examples/hosts/hosts
 examples/auth/auth

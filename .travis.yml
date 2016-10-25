@@ -4,6 +4,8 @@ language: go
 go:
   - 1.5
   - 1.6
+  - 1.7
+  - tip
 
 before_install:
   - go get -v github.com/axw/gocov/gocov
@@ -17,5 +19,8 @@ install:
 script:
   - go vet ./...
   # - $HOME/gopath/bin/golint ./...
-  - go test -v .
-  - $HOME/gopath/bin/goveralls -service=travis-ci -ignore examples/auth/auth.go,examples/basic/basic.go,examples/hosts/hosts.go
+  - go test -v -covermode=count -coverprofile=coverage.out
+  - $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci
+
+-after_success:
+  - coveralls

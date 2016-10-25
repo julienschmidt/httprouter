@@ -6,13 +6,17 @@
 FastHttpRouter is forked from [httprouter](https://github.com/julienschmidt/httprouter) which is a lightweight high performance HTTP request router
 (also called *multiplexer* or just *mux* for short) for [fasthttp](https://github.com/valyala/fasthttp).
 
-In addition to the [RequestHandler](https://godoc.org/github.com/valyala/fasthttp#RequestHandler) functions of valyala's `fasthttp` package, this router supports fetching `param` variables into `RequestCtx.UserVales` and matching against the request method. It also scales better.
+> The author of `httprouter` [@julienschmidt](https://github.com/julienschmidt) does almost all the hard work of this router. What I do is just fit for `fasthttp`. I have no hope to build a huge go web framwork like [iris](https://github.com/kataras/iris). I fork this repo is just because there is no router for `fasthttp` in past. This router has been used in my online production and processes 17 million requests per day. 
 
 The router is optimized for high performance and a small memory footprint. It scales well even with very long paths and a large number of routes. A compressing dynamic trie (radix tree) structure is used for efficient matching.
 
+#### Releases
+
+- [2016.10.24] [v0.1](https://github.com/buaazp/fasthttprouter/releases/tag/v0.1) The first release version of `fasthttprouter`.
+
 ## Features
 
-**Best Performance:** FastHttpRouter is one of the **fastest** go web frameworks in the [go-web-framework-benchmark](https://github.com/smallnest/go-web-framework-benchmark). Even faster than httprouter itself.
+**Best Performance:** FastHttpRouter is **one of the fastest** go web frameworks in the [go-web-framework-benchmark](https://github.com/smallnest/go-web-framework-benchmark). Even faster than httprouter itself.
 
 - Basic Test: The first test case is to mock 0 ms, 10 ms, 100 ms, 500 ms processing time in handlers. The concurrency clients are 5000.
 
@@ -64,7 +68,7 @@ Of course you can also set **custom [NotFound](http://godoc.org/github.com/buaaz
 
 ## Usage
 
-This is just a quick introduction, view the [GoDoc](http://godoc.org/github.com/buaazp/fasthttprouter) for details.
+This is just a quick introduction, view the [GoDoc](http://godoc.org/github.com/buaazp/fasthttprouter) for details:
 
 Let's start with a trivial example:
 
@@ -174,133 +178,12 @@ Just try it out for yourself, the usage of FastHttpRouter is very straightforwar
 
 ## Where can I find Middleware *X*?
 
-This package just provides a very efficient request router with a few extra features. The router is just a [`fasthttp.RequestHandler`](https://godoc.org/github.com/valyala/fasthttp#RequestHandler), you can chain any fasthttp.RequestHandler compatible middleware before the router. Or you could [just write your own](https://justinas.org/writing-http-middleware-in-go/), it's very easy!
+This package just provides a very efficient request router with a few extra features. The router is just a [`fasthttp.RequestHandler`](https://godoc.org/github.com/valyala/fasthttp#RequestHandler), you can chain any `fasthttp.RequestHandler` compatible middleware before the router. Or you could [just write your own](https://justinas.org/writing-http-middleware-in-go/), it's very easy!
 
-Alternatively, you could try [a web framework based on HttpRouter](#web-frameworks-based-on-httprouter).
+Have a look at these midware examples:
 
-### Multi-domain / Sub-domains
-
-Here is a quick example: Does your server serve multiple domains / hosts?
-You want to use sub-domains?
-Define a router per host!
-
-```go
-// We need an object that implements the fasthttp.RequestHandler interface.
-// We just use a map here, in which we map host names (with port) to fasthttp.RequestHandlers
-type HostSwitch map[string]fasthttp.RequestHandler
-
-// Implement a CheckHost method on our new type
-func (hs HostSwitch) CheckHost(ctx *fasthttp.RequestCtx) {
-	// Check if a http.Handler is registered for the given host.
-	// If yes, use it to handle the request.
-	if handler := hs[string(ctx.Host())]; handler != nil {
-		handler(ctx)
-	} else {
-		// Handle host names for wich no handler is registered
-		ctx.Error("Forbidden", 403) // Or Redirect?
-	}
-}
-
-func main() {
-	// Initialize a router as usual
-	router := fasthttprouter.New()
-	router.GET("/", Index)
-	router.GET("/hello/:name", Hello)
-
-	// Make a new HostSwitch and insert the router (our http handler)
-	// for example.com and port 12345
-	hs := make(HostSwitch)
-	hs["example.com:12345"] = router.Handler
-
-	// Use the HostSwitch to listen and serve on port 12345
-	log.Fatal(fasthttp.ListenAndServe(":12345", hs.CheckHost))
-}
-```
-
-### Basic Authentication
-
-Another quick example: Basic Authentication (RFC 2617) for handles:
-
-```go
-package main
-
-import (
-	"encoding/base64"
-	"fmt"
-	"log"
-	"strings"
-
-	"github.com/buaazp/fasthttprouter"
-	"github.com/valyala/fasthttp"
-)
-
-// basicAuth returns the username and password provided in the request's
-// Authorization header, if the request uses HTTP Basic Authentication.
-// See RFC 2617, Section 2.
-func basicAuth(ctx *fasthttp.RequestCtx) (username, password string, ok bool) {
-	auth := ctx.Request.Header.Peek("Authorization")
-	if auth == nil {
-		return
-	}
-	return parseBasicAuth(string(auth))
-}
-
-// parseBasicAuth parses an HTTP Basic Authentication string.
-// "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" returns ("Aladdin", "open sesame", true).
-func parseBasicAuth(auth string) (username, password string, ok bool) {
-	const prefix = "Basic "
-	if !strings.HasPrefix(auth, prefix) {
-		return
-	}
-	c, err := base64.StdEncoding.DecodeString(auth[len(prefix):])
-	if err != nil {
-		return
-	}
-	cs := string(c)
-	s := strings.IndexByte(cs, ':')
-	if s < 0 {
-		return
-	}
-	return cs[:s], cs[s+1:], true
-}
-
-// BasicAuth is the basic auth handler
-func BasicAuth(h fasthttp.RequestHandler, requiredUser, requiredPassword string) fasthttp.RequestHandler {
-	return fasthttp.RequestHandler(func(ctx *fasthttp.RequestCtx) {
-		// Get the Basic Authentication credentials
-		user, password, hasAuth := basicAuth(ctx)
-
-		if hasAuth && user == requiredUser && password == requiredPassword {
-			// Delegate request to the given handle
-			h(ctx)
-		}
-		// Request Basic Authentication otherwise
-		ctx.Response.Header.Set("WWW-Authenticate", "Basic realm=Restricted")
-		ctx.Error(fasthttp.StatusMessage(fasthttp.StatusUnauthorized), fasthttp.StatusUnauthorized)
-	})
-}
-
-// Index is the index handler
-func Index(ctx *fasthttp.RequestCtx) {
-	fmt.Fprint(ctx, "Not protected!\n")
-}
-
-// Protected is the Protected handler
-func Protected(ctx *fasthttp.RequestCtx) {
-	fmt.Fprint(ctx, "Protected!\n")
-}
-
-func main() {
-	user := "gordon"
-	pass := "secret!"
-
-	router := fasthttprouter.New()
-	router.GET("/", Index)
-	router.GET("/protected/", BasicAuth(Protected, user, pass))
-
-	log.Fatal(fasthttp.ListenAndServe(":8080", router.Handler))
-}
-```
+[Auth Midware](examples/auth)
+[Multi Hosts Midware](examples/hosts)
 
 ## Chaining with the NotFound handler
 
