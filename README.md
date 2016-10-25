@@ -17,7 +17,7 @@ This router is optimized for high performance and a small memory footprint. It s
 
 #### Releases
 
-- [2016.10.24] [v0.1](https://github.com/buaazp/fasthttprouter/releases/tag/v0.1) The first release version of `fasthttprouter`.
+- [2016.10.24] [v0.1.0](https://github.com/buaazp/fasthttprouter/releases/tag/v0.1.0) The first release version of `fasthttprouter`.
 
 ## Features
 
