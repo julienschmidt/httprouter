@@ -7,13 +7,13 @@
 FastHttpRouter is forked from [httprouter](https://github.com/julienschmidt/httprouter) which is a lightweight high performance HTTP request router
 (also called *multiplexer* or just *mux* for short) for [fasthttp](https://github.com/valyala/fasthttp).
 
-> The author of `httprouter` [@julienschmidt](https://github.com/julienschmidt) does almost all the hard work of this router.
-> 
-> I respect the laws of open source. So LICENSE of `httprouter` is alway stay here: [HttpRouterLicense](HttpRouterLicense).
-> 
-> What I do is just fit for `fasthttp`. I have no hope to build a huge go web framwork like [iris](https://github.com/kataras/iris). I fork this repo is just because there is no router for `fasthttp` in past. This router has been used in my online production and processes 17 million requests per day.
+This router is optimized for high performance and a small memory footprint. It scales well even with very long paths and a large number of routes. A compressing dynamic trie (radix tree) structure is used for efficient matching.
 
-The router is optimized for high performance and a small memory footprint. It scales well even with very long paths and a large number of routes. A compressing dynamic trie (radix tree) structure is used for efficient matching.
+#### License Related
+
+- The author of `httprouter` [@julienschmidt](https://github.com/julienschmidt) does almost all the hard work of this router.
+- I respect the laws of open source. So LICENSE of `httprouter` is alway stay here: [HttpRouterLicense](HttpRouterLicense).
+- What I do is just fit for `fasthttp`. I have no hope to build a huge go web framwork like [iris](https://github.com/kataras/iris). I fork this repo is just because there is no router for `fasthttp` in past. This router has been used in my online production and processes 17 million requests per day.
 
 #### Releases
 
