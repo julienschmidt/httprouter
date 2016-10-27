@@ -3,6 +3,7 @@
 [![Coverage Status](https://coveralls.io/repos/buaazp/fasthttprouter/badge.svg?branch=master&service=github)](https://coveralls.io/github/buaazp/fasthttprouter?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/buaazp/fasthttprouter)](https://goreportcard.com/report/github.com/buaazp/fasthttprouter)
 [![GoDoc](http://godoc.org/github.com/buaazp/fasthttprouter?status.svg)](http://godoc.org/github.com/buaazp/fasthttprouter)
+[![GitHub release](https://img.shields.io/github/release/buaazp/fasthttprouter.svg)](https://github.com/buaazp/fasthttprouter/releases)
 
 FastHttpRouter is forked from [httprouter](https://github.com/julienschmidt/httprouter) which is a lightweight high performance HTTP request router
 (also called *multiplexer* or just *mux* for short) for [fasthttp](https://github.com/valyala/fasthttp).
@@ -13,7 +14,9 @@ This router is optimized for high performance and a small memory footprint. It s
 
 - The author of `httprouter` [@julienschmidt](https://github.com/julienschmidt) does almost all the hard work of this router.
 - I respect the laws of open source. So LICENSE of `httprouter` is alway stay here: [HttpRouterLicense](HttpRouterLicense).
-- What I do is just fit for `fasthttp`. I have no hope to build a huge go web framwork like [iris](https://github.com/kataras/iris). I fork this repo is just because there is no router for `fasthttp` in past. This router has been used in my online production and processes 17 million requests per day.
+- What I do is just fit for `fasthttp`. I have no hope to build a huge but toxic go web framwork like [iris](https://github.com/kataras/iris). 
+- I fork this repo is just because there is no router for `fasthttp` at that time. And `fasthttprouter` is the FIRST router for `fasthttp`. 
+- `fasthttprouter` has been used in my online production and processes 17 million requests per day. It is fast and stable, so I decide to release a stable version.
 
 #### Releases
 
