@@ -12,7 +12,7 @@ This router is optimized for high performance and a small memory footprint. It s
 
 #### License Related
 
-- The author of `httprouter` [@julienschmidt](https://github.com/julienschmidt) does almost all the hard work of this router.
+- The author of `httprouter` [@julienschmidt](https://github.com/julienschmidt) did almost all the hard work of this router.
 - I respect the laws of open source. So LICENSE of `httprouter` is alway stay here: [HttpRouterLicense](HttpRouterLicense).
 - What I do is just fit for `fasthttp`. I have no hope to build a huge but toxic go web framwork like [iris](https://github.com/kataras/iris). 
 - I fork this repo is just because there is no router for `fasthttp` at that time. And `fasthttprouter` is the FIRST router for `fasthttp`. 
