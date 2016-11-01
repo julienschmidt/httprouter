@@ -104,7 +104,7 @@ var routes = Routes{
 package controllers
 
 import(
-     "github.com/dragfire/httprouter"
+     "github.com/julienschmidt/httprouter"
      "net/http"
 )
 
@@ -123,6 +123,7 @@ import "github.com/username/project/routes"
 func main() {
     router := routes.NewRouter()
     logger.Info("Listening on 3000")
+    
     logger.Error(http.ListenAndServe(":3000", router))    
 }
 ```
