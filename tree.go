@@ -5,10 +5,10 @@
 package fasthttprouter
 
 import (
+	"github.com/valyala/fasthttp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
-	"github.com/valyala/fasthttp"
 )
 
 func min(a, b int) int {
@@ -361,7 +361,10 @@ walk: // outer loop for walking the tree
 						end++
 					}
 
-					ctx.SetUserValue(n.path[1:], path[:end])
+					// handle calls to Router.allowed method with nil context
+					if ctx != nil {
+						ctx.SetUserValue(n.path[1:], path[:end])
+					}
 
 					// we need to go deeper!
 					if end < len(path) {
@@ -388,8 +391,10 @@ walk: // outer loop for walking the tree
 					return
 
 				case catchAll:
-					// save param value
-					ctx.SetUserValue(n.path[2:], path)
+					if ctx != nil {
+						// save param value
+						ctx.SetUserValue(n.path[2:], path)
+					}
 					handle = n.handle
 					return
 
