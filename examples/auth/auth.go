@@ -49,10 +49,11 @@ func BasicAuth(h fasthttp.RequestHandler, requiredUser, requiredPassword string)
 		if hasAuth && user == requiredUser && password == requiredPassword {
 			// Delegate request to the given handle
 			h(ctx)
+			return
 		}
 		// Request Basic Authentication otherwise
-		ctx.Response.Header.Set("WWW-Authenticate", "Basic realm=Restricted")
 		ctx.Error(fasthttp.StatusMessage(fasthttp.StatusUnauthorized), fasthttp.StatusUnauthorized)
+		ctx.Response.Header.Set("WWW-Authenticate", "Basic realm=Restricted")
 	})
 }
 
