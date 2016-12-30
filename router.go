@@ -78,6 +78,7 @@ package httprouter
 
 import (
 	"net/http"
+	"strconv"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
@@ -105,6 +106,12 @@ func (ps Params) ByName(name string) string {
 		}
 	}
 	return ""
+}
+
+// ByNameInt returns converted to int value of param and error, if cannot convert to int.
+func (ps Params) ByNameInt(name string) (int, error) {
+	value := ps.ByName(name)
+	return strconv.Atoi(value)
 }
 
 // Router is a http.Handler which can be used to dispatch requests to different

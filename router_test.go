@@ -34,6 +34,8 @@ func TestParams(t *testing.T) {
 		Param{"param1", "value1"},
 		Param{"param2", "value2"},
 		Param{"param3", "value3"},
+		Param{"intParam", "1"},
+		Param{"nonIntParam", "value4"},
 	}
 	for i := range ps {
 		if val := ps.ByName(ps[i].Key); val != ps[i].Value {
@@ -42,6 +44,12 @@ func TestParams(t *testing.T) {
 	}
 	if val := ps.ByName("noKey"); val != "" {
 		t.Errorf("Expected empty string for not found key; got: %s", val)
+	}
+	if valInt, err := ps.ByNameInt("intParam"); valInt != 1 {
+		t.Errorf("Wrong int value for %s: Got %d; Want %d; Optional error: %s", "intParam", valInt, 1, err)
+	}
+	if valInt, err := ps.ByNameInt("nonIntParam"); err == nil {
+		t.Errorf("Expected error for non int param; got: %d", valInt)
 	}
 }
 
