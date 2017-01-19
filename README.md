@@ -253,7 +253,7 @@ If the HttpRouter is a bit too minimalistic for you, you might try one of the fo
 * [api2go](https://github.com/manyminds/api2go): A JSON API Implementation for Go
 * [Gin](https://github.com/gin-gonic/gin): Features a martini-like API with much better performance
 * [Goat](https://github.com/bahlo/goat): A minimalistic REST API server in Go
-* [goMiddlewareChain]: An express.js-like-middleware-chain
+* [goMiddlewareChain](https://github.com/TobiEiss/goMiddlewareChain): An express.js-like-middleware-chain
 * [Hikaru](https://github.com/najeira/hikaru): Supports standalone and Google AppEngine
 * [Hitch](https://github.com/nbio/hitch): Hitch ties httprouter, [httpcontext](https://github.com/nbio/httpcontext), and middleware up in a bow
 * [httpway](https://github.com/corneldamian/httpway): Simple middleware extension with context for httprouter and a server with gracefully shutdown support
