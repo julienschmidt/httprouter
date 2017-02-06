@@ -148,7 +148,12 @@ func (n *node) addRoute(path string, handle Handle) {
 						continue walk
 					} else {
 						// Wildcard conflict
-						pathSeg := strings.SplitN(path, "/", 2)[0]
+						var pathSeg string
+						if n.nType == catchAll {
+							pathSeg = path
+						} else {
+							pathSeg = strings.SplitN(path, "/", 2)[0]
+						}
 						prefix := fullPath[:strings.Index(fullPath, pathSeg)] + n.path
 						panic("'" + pathSeg +
 							"' in new path '" + fullPath +
