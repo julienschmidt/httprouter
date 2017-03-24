@@ -306,6 +306,32 @@ func TestRouterOPTIONS(t *testing.T) {
 	}
 }
 
+func TestRouterOPTIONSPostHandler(t *testing.T) {
+	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+
+	router := New()
+	router.OPTIONSPostHandler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("test-header", "true")
+		w.Header().Set("Access-Control-Allow-Methods", w.Header().Get("Allow"))
+	})
+
+	router.POST("/path", handlerFunc)
+
+	r, _ := http.NewRequest("OPTIONS", "*", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	if !(w.Code == http.StatusOK) {
+		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
+	} else {
+		if header := w.Header().Get("test-header"); header != "true" {
+			t.Error("unexepected test-header value: " + header)
+		}
+		if header := w.Header().Get("Access-Control-Allow-Methods"); header != w.Header().Get("Allow") {
+			t.Error("unexepected test-header value: " + header)
+		}
+	}
+}
+
 func TestRouterNotAllowed(t *testing.T) {
 	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
 
