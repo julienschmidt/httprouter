@@ -384,6 +384,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		// Handle OPTIONS requests
 		if r.HandleOPTIONS {
 			if allow := r.allowed(path, req.Method); len(allow) > 0 {
+				if r.OPTIONSPostHandler != nil {
+					r.OPTIONSPostHandler.ServeHTTP(w, req)
+				}
 				w.Header().Set("Allow", allow)
 				if r.OPTIONSPostHandler != nil {
 					r.OPTIONSPostHandler.ServeHTTP(w, req)
