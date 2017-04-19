@@ -144,7 +144,7 @@ type Router struct {
 
 	// Configurable http.Handler which is called after modifying the automatic reply
 	// to OPTIONS requests. If HandleOptions is false this won't be used
-	OPTIONSPostHandler http.Handler
+	OptionsHandler http.Handler
 
 	// Configurable http.Handler which is called when no matching route is
 	// found. If it is not set, http.NotFound is used.
@@ -384,12 +384,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		// Handle OPTIONS requests
 		if r.HandleOPTIONS {
 			if allow := r.allowed(path, req.Method); len(allow) > 0 {
-				if r.OPTIONSPostHandler != nil {
-					r.OPTIONSPostHandler.ServeHTTP(w, req)
-				}
 				w.Header().Set("Allow", allow)
-				if r.OPTIONSPostHandler != nil {
-					r.OPTIONSPostHandler.ServeHTTP(w, req)
+				if r.OptionsHandler != nil {
+					r.OptionsHandler.ServeHTTP(w, req)
 				}
 				return
 			}

@@ -310,7 +310,7 @@ func TestRouterOPTIONSPostHandler(t *testing.T) {
 	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
 
 	router := New()
-	router.OPTIONSPostHandler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	router.OptionsHandler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("test-header", "true")
 		w.Header().Set("Access-Control-Allow-Methods", w.Header().Get("Allow"))
 	})
