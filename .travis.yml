@@ -10,3 +10,9 @@ go:
   - 1.7
   - 1.8
   - tip
+before_install:
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
+script:
+  - go test -v -covermode=count -coverprofile=coverage.out
+  - $HOME/gopath/bin/goveralls  -coverprofile=coverage.out -service=travis-ci
