@@ -12,6 +12,10 @@ go:
 before_install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
+  - go get github.com/golang/lint/golint
 script:
   - go test -v -covermode=count -coverprofile=coverage.out
+  - go vet ./...
+  - test -z "$(gofmt -d . | tee /dev/stderr)"
+  - test -z "$(golint ./... | tee /dev/stderr)"
   - $HOME/gopath/bin/goveralls  -coverprofile=coverage.out -service=travis-ci
