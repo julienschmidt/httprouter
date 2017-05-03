@@ -57,6 +57,75 @@ func main() {
 
     log.Fatal(http.ListenAndServe(":8080", router))
 }
+```  
+Creating a better routing in a seperate routes file:
+
+`routes.go:`
+```go
+package routes
+
+import (
+    "github.com/julienschmidt/httprouter"
+    "github.com/username/project/controllers"
+)
+
+type Route struct {
+    Method      string
+    Path        string
+    Handle      httprouter.Handle
+}
+
+type Routes []Route
+
+func NewRouter() *httprouter.Router {
+    router := httprouter.New()
+    for _, route := range routes {
+        router.Handle(route.Method, route.Path, route.Handle)
+    }
+    return router
+}
+
+var routes = Routes{
+    Route{
+        "POST",
+        "/location",
+        controllers.Location,
+    },  
+    Route{
+        "POST",
+        "/users/:action",
+        controllers.Users,
+    },
+}
+```
+
+`controllers.go:`
+```go
+package controllers
+
+import(
+     "github.com/julienschmidt/httprouter"
+     "net/http"
+)
+
+func Users(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+    action := params.ByName("action")
+    logger.Debug("Params:", action)
+}
+```
+
+`main.go:`
+```go
+package main
+
+import "github.com/username/project/routes"
+
+func main() {
+    router := routes.NewRouter()
+    logger.Info("Listening on 3000")
+    
+    logger.Error(http.ListenAndServe(":3000", router))    
+}
 ```
 
 ### Named parameters
