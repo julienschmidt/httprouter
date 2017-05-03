@@ -528,3 +528,100 @@ func TestRouterServeFiles(t *testing.T) {
 		t.Error("serving file failed")
 	}
 }
+
+func TestPathExist(t *testing.T) {
+	router := New()
+	mfs := &mockFileSystem{}
+	f := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+
+	router.PUT("/access/edit", f)
+	router.GET("/access/edit/*params", f)
+	router.GET("/panel", f)
+	router.GET("/static/*filename", f)
+	router.GET("/blog/:category/:post", f)
+	router.GET("/foo/:post", f)
+	router.ServeFiles("/files/*filepath", mfs)
+
+	if !router.PathExist("/access/edit") {
+		t.Fatal("PathExist failed")
+	}
+	if !router.PathExist("/panel") {
+		t.Fatal("PathExist failed")
+	}
+	if !router.PathExist("/static") {
+		t.Fatal("PathExist failed")
+	}
+	if !router.PathExist("/blog") {
+		t.Fatal("PathExist failed")
+	}
+	if !router.PathExist("/static") {
+		t.Fatal("PathExist failed")
+	}
+
+	if router.PathExist("/blá") {
+		t.Fatal("PathExist failed")
+	}
+	if router.PathExist("/access/edit/review") {
+		t.Fatal("PathExist failed")
+	}
+
+}
+
+func TestHandlerPaths(t *testing.T) {
+	router := New()
+	mfs := &mockFileSystem{}
+	f := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+	mp := map[string]map[string]struct{}{
+		"PUT": {"/access/edit": struct{}{}},
+		"GET": {
+			"/access/edit": struct{}{},
+			"/panel":       struct{}{},
+			"/static":      struct{}{},
+			"/blog":        struct{}{},
+			"/files":       struct{}{},
+			"/foo":         struct{}{},
+		},
+	}
+	mpparams := map[string]map[string]struct{}{
+		"PUT": {"/access/edit": struct{}{}},
+		"GET": {
+			"/access/edit/*params":  struct{}{},
+			"/panel":                struct{}{},
+			"/static/*filename":     struct{}{},
+			"/blog/:category/:post": struct{}{},
+			"/files/*filepath":      struct{}{},
+			"/foo/:post":            struct{}{},
+		},
+	}
+
+	router.PUT("/access/edit", f)
+	router.GET("/access/edit/*params", f)
+	router.GET("/panel", f)
+	router.GET("/static/*filename", f)
+	router.GET("/blog/:category/:post", f)
+	router.GET("/foo/:post", f)
+	router.ServeFiles("/files/*filepath", mfs)
+
+	router.HandlerPaths(false, func(m, p string, h Handle) bool {
+		paths, found := mp[m]
+		if !found {
+			t.Fatal("method no found")
+		}
+		_, found = paths[p]
+		if !found {
+			t.Fatal("path no found", p)
+		}
+		return true
+	})
+	router.HandlerPaths(true, func(m, p string, h Handle) bool {
+		paths, found := mpparams[m]
+		if !found {
+			t.Fatal("method no found")
+		}
+		_, found = paths[p]
+		if !found {
+			t.Fatal("path no found", p)
+		}
+		return true
+	})
+}

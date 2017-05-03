@@ -78,6 +78,7 @@ package httprouter
 
 import (
 	"net/http"
+	"strings"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
@@ -173,6 +174,87 @@ func New() *Router {
 		HandleMethodNotAllowed: true,
 		HandleOPTIONS:          true,
 	}
+}
+
+func iter(params bool, method, path string, n *node, f func(m, p string, h Handle) bool) bool {
+	if n.handle != nil {
+		if !params {
+			if n.nType == catchAll {
+				if !f(method, path, n.handle) {
+					return false
+				}
+				return true
+			} else if n.nType == param {
+				path = strings.TrimSuffix(path, "/")
+				i := strings.LastIndex(path, "/")
+				if i >= 1 {
+					path = path[:i]
+				}
+				if !f(method, path, n.handle) {
+					return false
+				}
+				return true
+			}
+		}
+		if !f(method, path+n.path, n.handle) {
+			return false
+		}
+	}
+	for _, child := range n.children {
+		p := path + n.path
+		if !iter(params, method, p, child, f) {
+			return false
+		}
+	}
+	return true
+}
+
+// HandlerPaths iter over all handlers path. If f returns
+// false HandlerPaths stops iterate.
+func (r *Router) HandlerPaths(params bool, f func(method, path string, h Handle) bool) {
+	for m, n := range r.trees {
+		if !iter(params, m, "", n, f) {
+			return
+		}
+	}
+}
+
+func find(name, path string, n *node) bool {
+	if n.handle != nil {
+		if n.nType == catchAll {
+			if name == path {
+				return true
+			}
+			return false
+		} else if n.nType == param {
+			if strings.HasPrefix(path, name) {
+				return true
+			}
+			return false
+		}
+		if name == path+n.path {
+			return true
+		}
+	}
+	for _, child := range n.children {
+		p := path + n.path
+		if find(name, p, child) {
+			return true
+		}
+	}
+	return false
+}
+
+// PathExist returns true if a path exist. If the path
+//have parameters its checks if the begin of the path
+//exist.
+func (r *Router) PathExist(name string) bool {
+	for _, n := range r.trees {
+		if find(name, "", n) {
+			return true
+		}
+	}
+	return false
 }
 
 // GET is a shortcut for router.Handle("GET", path, handle)
