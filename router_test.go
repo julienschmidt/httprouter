@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be found
 // in the LICENSE file.
 
-package httprouter
+package httprouter_test
 
 import (
 	"errors"
@@ -11,6 +11,8 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	. "github.com/julienschmidt/httprouter"
 )
 
 type mockResponseWriter struct{}
@@ -527,4 +529,13 @@ func TestRouterServeFiles(t *testing.T) {
 	if !mfs.opened {
 		t.Error("serving file failed")
 	}
+}
+
+func catchPanic(testFunc func()) (recv interface{}) {
+	defer func() {
+		recv = recover()
+	}()
+
+	testFunc()
+	return
 }
