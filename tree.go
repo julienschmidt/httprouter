@@ -377,6 +377,7 @@ walk: // outer loop for walking the tree
 					if end < len(path) {
 						if len(n.children) > 0 {
 							path = path[end:]
+							tsr = (path[len(path)-1:] == "/" && n.handle != nil)
 							n = n.children[0]
 							continue walk
 						}
