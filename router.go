@@ -101,6 +101,10 @@ type Params []Param
 func (ps Params) ByName(name string) string {
 	for i := range ps {
 		if ps[i].Key == name {
+            // Remove any leading slash
+			if ps[i].Value[0:1] == "/" {
+				return ps[i].Value[1:]
+			}
 			return ps[i].Value
 		}
 	}
