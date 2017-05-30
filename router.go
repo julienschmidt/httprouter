@@ -77,8 +77,8 @@
 package httprouter
 
 import (
-	"net/http"
 	"fmt"
+	"net/http"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
@@ -214,7 +214,7 @@ func (r *Router) DELETE(path string, handle Handle) {
 // Route holds the new request configurations to be used in prefix method
 type Route struct {
 	Method string
-	Path string
+	Path   string
 	Handle Handle
 }
 
@@ -231,7 +231,6 @@ func (r *Route) IsValid() bool {
 	if r.Handle == nil {
 		return false
 	}
-
 
 	return true
 }
