@@ -76,7 +76,7 @@ func (h handlerStruct) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestRouterAPI(t *testing.T) {
-	var get, head, options, post, put, patch, delete, handler, handlerFunc bool
+	var get, head, options, post, put, patch, delete, apiGet, apiPost, handler, handlerFunc bool
 
 	httpHandler := handlerStruct{&handler}
 
@@ -102,6 +102,22 @@ func TestRouterAPI(t *testing.T) {
 	router.DELETE("/DELETE", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		delete = true
 	})
+	router.Prefix("/api",
+		Route{
+			"GET",
+			"/GET",
+			func(w http.ResponseWriter, r *http.Request, _ Params) {
+				apiGet = true
+			},
+		},
+		Route{
+			"POST",
+			"/POST",
+			func(w http.ResponseWriter, r *http.Request, _ Params) {
+				apiPost = true
+			},
+		},
+	)
 	router.Handler("GET", "/Handler", httpHandler)
 	router.HandlerFunc("GET", "/HandlerFunc", func(w http.ResponseWriter, r *http.Request) {
 		handlerFunc = true
@@ -149,6 +165,18 @@ func TestRouterAPI(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !delete {
 		t.Error("routing DELETE failed")
+	}
+
+	r, _ = http.NewRequest("GET", "/api/GET", nil)
+	router.ServeHTTP(w, r)
+	if !apiGet {
+		t.Error("routing API GET failed")
+	}
+
+	r, _ = http.NewRequest("POST", "/api/POST", nil)
+	router.ServeHTTP(w, r)
+	if !apiPost {
+		t.Error("routing API POST failed")
 	}
 
 	r, _ = http.NewRequest("GET", "/Handler", nil)

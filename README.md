@@ -50,10 +50,21 @@ func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
     fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
 }
 
+func ApiGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+   fmt.Fprintf(w, "hello api, %s!\n", ps.ByName("name"))
+}
+
 func main() {
     router := httprouter.New()
     router.GET("/", Index)
     router.GET("/hello/:name", Hello)
+    router.Prefix("/api",
+            Route{
+                Method: "GET",
+                Path: "/hello/:name",
+                ApiGet,
+            },
+        )
 
     log.Fatal(http.ListenAndServe(":8080", router))
 }

@@ -78,6 +78,7 @@ package httprouter
 
 import (
 	"net/http"
+	"fmt"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
@@ -208,6 +209,49 @@ func (r *Router) PATCH(path string, handle Handle) {
 // DELETE is a shortcut for router.Handle("DELETE", path, handle)
 func (r *Router) DELETE(path string, handle Handle) {
 	r.Handle("DELETE", path, handle)
+}
+
+// Route holds the new request configurations to be used in prefix method
+type Route struct {
+	Method string
+	Path string
+	Handle Handle
+}
+
+// Validate if route has method, path and handle set
+func (r *Route) IsValid() bool {
+	if r.Method == "" {
+		return false
+	}
+
+	if r.Path == "" {
+		return false
+	}
+
+	if r.Handle == nil {
+		return false
+	}
+
+
+	return true
+}
+
+// Prefix help registry all requests
+func (r *Router) Prefix(prefix string, routes ...Route) {
+	if prefix[0] != '/' {
+		panic("prefix must begin with '/' in prefix '" + prefix + "'")
+	}
+
+	if len(routes) > 0 {
+		for _, route := range routes {
+			if !route.IsValid() {
+				panic("one of the routes is invalid")
+			}
+
+			path := fmt.Sprintf("%s%s", prefix, route.Path)
+			r.Handle(route.Method, path, route.Handle)
+		}
+	}
 }
 
 // Handle registers a new request handle with the given path and method.
