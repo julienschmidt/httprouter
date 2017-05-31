@@ -218,7 +218,7 @@ type Route struct {
 	Handle Handle
 }
 
-// Validate if route has method, path and handle set
+// IsValid Validate if route has method, path and handle set
 func (r *Route) IsValid() bool {
 	if r.Method == "" {
 		return false
