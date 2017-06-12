@@ -381,6 +381,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if r.HandleOPTIONS {
 			if allow := r.allowed(path, req.Method); len(allow) > 0 {
 				w.Header().Set("Allow", allow)
+				w.Header().Set("Access-Control-Allow-Methods", allow)
 				return
 			}
 		}
