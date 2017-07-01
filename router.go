@@ -382,7 +382,6 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			if allow := r.allowed(path, req.Method); len(allow) > 0 {
 				w.Header().Set("Allow", allow)
 				w.Header().Set("Access-Control-Allow-Methods", allow)
-				w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 				return
 			}
