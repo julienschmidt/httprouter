@@ -143,8 +143,7 @@ func (n *node) addRoute(path string, handle Handle) {
 
 					// Check if the wildcard matches
 					if len(path) >= len(n.path) && n.path == path[:len(n.path)] &&
-						// Check for longer wildcard, e.g. :name and :names
-						(len(n.path) >= len(path) || path[len(n.path)] == '/') {
+						(len(n.path) == len(path) || path[len(n.path)] == '/') {
 						continue walk
 					} else {
 						// Wildcard conflict
