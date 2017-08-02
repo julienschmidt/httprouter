@@ -92,11 +92,14 @@ func (n *node) addRoute(path string, handle Handle) {
 			}
 
 			// Find the longest common prefix.
-			// This also implies that the common prefix contains no ':' or '*'
-			// since the existing key can't contain those chars.
 			i := 0
 			max := min(len(path), len(n.path))
 			for i < max && path[i] == n.path[i] {
+				if path[i] == '*' {
+					panic("Cannot register '" + fullPath +
+						"'. Segment '" + path[i:] +
+						"' conflicts with existing route '" + n.path[i:])
+				}
 				i++
 			}
 
