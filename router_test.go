@@ -364,26 +364,26 @@ func TestRouterNotFound(t *testing.T) {
 	router.GET("/", handlerFunc)
 
 	testRoutes := []struct {
-		route  string
-		code   int
-		header string
+		route    string
+		code     int
+		location string
 	}{
-		{"/path/", 301, "map[Location:[/path]]"},   // TSR -/
-		{"/dir", 301, "map[Location:[/dir/]]"},     // TSR +/
-		{"", 301, "map[Location:[/]]"},             // TSR +/
-		{"/PATH", 301, "map[Location:[/path]]"},    // Fixed Case
-		{"/DIR/", 301, "map[Location:[/dir/]]"},    // Fixed Case
-		{"/PATH/", 301, "map[Location:[/path]]"},   // Fixed Case -/
-		{"/DIR", 301, "map[Location:[/dir/]]"},     // Fixed Case +/
-		{"/../path", 301, "map[Location:[/path]]"}, // CleanPath
-		{"/nope", 404, ""},                         // NotFound
+		{"/path/", 301, "/path"},   // TSR -/
+		{"/dir", 301, "/dir/"},     // TSR +/
+		{"", 301, "/"},             // TSR +/
+		{"/PATH", 301, "/path"},    // Fixed Case
+		{"/DIR/", 301, "/dir/"},    // Fixed Case
+		{"/PATH/", 301, "/path"},   // Fixed Case -/
+		{"/DIR", 301, "/dir/"},     // Fixed Case +/
+		{"/../path", 301, "/path"}, // CleanPath
+		{"/nope", 404, ""},         // NotFound
 	}
 	for _, tr := range testRoutes {
 		r, _ := http.NewRequest("GET", tr.route, nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, r)
-		if !(w.Code == tr.code && (w.Code == 404 || fmt.Sprint(w.Header()) == tr.header)) {
-			t.Errorf("NotFound handling route %s failed: Code=%d, Header=%v", tr.route, w.Code, w.Header())
+		if !(w.Code == tr.code && (w.Code == 404 || fmt.Sprint(w.Header().Get("Location")) == tr.location)) {
+			t.Errorf("NotFound handling route %s failed: Code=%d, Header=%v", tr.route, w.Code, w.Header().Get("Location"))
 		}
 	}
 
