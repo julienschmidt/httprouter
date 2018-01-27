@@ -178,7 +178,7 @@ For even better scalability, the child nodes on each tree level are ordered by p
 
 ## Why doesn't this work with `http.Handler`?
 
-Becasue fasthttp doesn't provide http.Handler. See this [description](https://github.com/valyala/fasthttp#switching-from-nethttp-to-fasthttp).
+Because fasthttp doesn't provide http.Handler. See this [description](https://github.com/valyala/fasthttp#switching-from-nethttp-to-fasthttp).
 
 Fasthttp works with [RequestHandler](https://godoc.org/github.com/valyala/fasthttp#RequestHandler) functions instead of objects implementing Handler interface. So a FastHttpRouter provides a [Handler](https://godoc.org/github.com/buaazp/fasthttprouter#Router.Handler) interface to implement the fasthttp.ListenAndServe interface.
 
@@ -188,10 +188,10 @@ Just try it out for yourself, the usage of FastHttpRouter is very straightforwar
 
 This package just provides a very efficient request router with a few extra features. The router is just a [`fasthttp.RequestHandler`](https://godoc.org/github.com/valyala/fasthttp#RequestHandler), you can chain any `fasthttp.RequestHandler` compatible middleware before the router. Or you could [just write your own](https://justinas.org/writing-http-middleware-in-go/), it's very easy!
 
-Have a look at these midware examples:
+Have a look at these middleware examples:
 
-- [Auth Midware](examples/auth)
-- [Multi Hosts Midware](examples/hosts)
+- [Auth Middleware](examples/auth)
+- [Multi Hosts Middleware](examples/hosts)
 
 ## Chaining with the NotFound handler
 
