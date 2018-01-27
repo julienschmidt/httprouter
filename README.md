@@ -30,7 +30,7 @@ This router is optimized for high performance and a small memory footprint. It s
 
 ![](http://ww3.sinaimg.cn/large/4c422e03jw1f2p6nyqh9ij20mm0aktbj.jpg)
 
-- Concurrency Test: In 30 ms processing time, the tets result for 100, 1000, 5000 clients is:
+- Concurrency Test: In 30 ms processing time, the test result for 100, 1000, 5000 clients is:
 
 ![](http://ww4.sinaimg.cn/large/4c422e03jw1f2p6o1cdbij20lk09sack.jpg)
 
