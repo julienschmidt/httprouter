@@ -99,12 +99,21 @@ type Params []Param
 // ByName returns the value of the first Param which key matches the given name.
 // If no matching Param is found, an empty string is returned.
 func (ps Params) ByName(name string) string {
+	val, _ := ps.Get(name)
+	return val
+}
+
+// Get returns the value of the first Param which key matches the given name and
+// its offset in the params slice.
+// If no matching Param is found, an empty string and a negative offset is
+// returned.
+func (ps Params) Get(name string) (string, int) {
 	for i := range ps {
 		if ps[i].Key == name {
-			return ps[i].Value
+			return ps[i].Value, i
 		}
 	}
-	return ""
+	return "", -1
 }
 
 // Router is a http.Handler which can be used to dispatch requests to different
