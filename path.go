@@ -63,7 +63,7 @@ func CleanPath(p string) string {
 
 		case p[r] == '.' && p[r+1] == '.' && (r+2 == n || p[r+2] == '/'):
 			// .. element: remove to last /
-			r += 2
+			r += 3
 
 			if w > 1 {
 				// can backtrack
