@@ -17,6 +17,8 @@ func min(a, b int) int {
 	return b
 }
 
+const maxParamCount uint8 = ^uint8(0)
+
 func countParams(path string) uint8 {
 	var n uint
 	for i := 0; i < len(path); i++ {
@@ -25,9 +27,10 @@ func countParams(path string) uint8 {
 		}
 		n++
 	}
-	if n >= 255 {
-		return 255
+	if n >= uint(maxParamCount) {
+		return maxParamCount
 	}
+
 	return uint8(n)
 }
 
