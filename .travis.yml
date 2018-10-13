@@ -7,9 +7,9 @@ go:
   - "1.10"
   - tip
 before_install:
+  - go get golang.org/x/lint/golint
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
-  - go get github.com/golang/lint/golint
 script:
   - go test -v -covermode=count -coverprofile=coverage.out
   - go vet ./...
