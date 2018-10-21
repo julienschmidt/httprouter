@@ -1,11 +1,12 @@
 sudo: false
 language: go
 go:
-  - 1.7
-  - 1.8
-  - 1.9
-  - "1.10"
-  - tip
+  - 1.7.x
+  - 1.8.x
+  - 1.9.x
+  - 1.10.x
+  - 1.11.x
+  - master
 before_install:
   - go get golang.org/x/lint/golint
   - go get golang.org/x/tools/cmd/cover
