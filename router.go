@@ -321,13 +321,15 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 	return
 }
 
+// BUG(): Redirects do not preserve percent-encoded slashes in go1.4 and earlier.
+
 // ServeHTTP makes the router implement the http.Handler interface.
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.PanicHandler != nil {
 		defer r.recv(w, req)
 	}
 
-	path := req.URL.Path
+	path := getPath(req)
 
 	if root := r.trees[req.Method]; root != nil {
 		if handle, ps, tsr := root.getValue(path); handle != nil {
@@ -343,9 +345,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 			if tsr && r.RedirectTrailingSlash {
 				if len(path) > 1 && path[len(path)-1] == '/' {
-					req.URL.Path = path[:len(path)-1]
+					removeTrailingSlash(req)
 				} else {
-					req.URL.Path = path + "/"
+					addTrailingSlash(req)
 				}
 				http.Redirect(w, req, req.URL.String(), code)
 				return
