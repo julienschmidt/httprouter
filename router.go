@@ -175,6 +175,7 @@ func New() *Router {
 		RedirectFixedPath:      true,
 		HandleMethodNotAllowed: true,
 		HandleOPTIONS:          true,
+		OptionsHeaders:         make(map[string]string),
 	}
 }
 
