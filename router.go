@@ -143,7 +143,7 @@ type Router struct {
 	HandleOPTIONS bool
 
 	// Additional options headers
-	Options map[string]string
+	OptionsHeaders map[string]string
 
 	// Configurable http.Handler which is called when no matching route is
 	// found. If it is not set, http.NotFound is used.
@@ -372,8 +372,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "OPTIONS" && r.HandleOPTIONS {
 		// Handle OPTIONS requests
 		if allow := r.allowed(path, req.Method); len(allow) > 0 {
-			if len(r.Options) > 0 {
-				for k, v := range r.Options {
+			if len(r.OptionsHeaders) > 0 {
+				for k, v := range r.OptionsHeaders {
 					w.Header().Set(k, v)
 				}
 			}
