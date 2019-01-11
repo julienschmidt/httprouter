@@ -86,9 +86,11 @@ import (
 type Handle func(http.ResponseWriter, *http.Request, Params)
 
 // Param is a single URL parameter, consisting of a key and a value.
+// The offset is the location at which the value was found when parsing a URL.
 type Param struct {
-	Key   string
-	Value string
+	Key    string
+	Value  string
+	Offset int
 }
 
 // Params is a Param-slice, as returned by the router.

@@ -31,9 +31,9 @@ func (m *mockResponseWriter) WriteHeader(int) {}
 
 func TestParams(t *testing.T) {
 	ps := Params{
-		Param{"param1", "value1"},
-		Param{"param2", "value2"},
-		Param{"param3", "value3"},
+		Param{"param1", "value1", 0},
+		Param{"param2", "value2", 0},
+		Param{"param3", "value3", 0},
 	}
 	for i := range ps {
 		if val := ps.ByName(ps[i].Key); val != ps[i].Value {
@@ -51,7 +51,7 @@ func TestRouter(t *testing.T) {
 	routed := false
 	router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, ps Params) {
 		routed = true
-		want := Params{Param{"name", "gopher"}}
+		want := Params{Param{"name", "gopher", 6}}
 		if !reflect.DeepEqual(ps, want) {
 			t.Fatalf("wrong wildcard values: want %v, got %v", want, ps)
 		}
@@ -453,7 +453,7 @@ func TestRouterLookup(t *testing.T) {
 	wantHandle := func(_ http.ResponseWriter, _ *http.Request, _ Params) {
 		routed = true
 	}
-	wantParams := Params{Param{"name", "gopher"}}
+	wantParams := Params{Param{"name", "gopher", 6}}
 
 	router := New()
 

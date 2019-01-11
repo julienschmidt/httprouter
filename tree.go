@@ -328,6 +328,8 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
 func (n *node) getValue(path string) (handle Handle, p Params, tsr bool) {
+	pathLen := len(path)
+
 walk: // outer loop for walking the tree
 	for {
 		if len(path) > len(n.path) {
@@ -372,6 +374,7 @@ walk: // outer loop for walking the tree
 					p = p[:i+1] // expand slice within preallocated capacity
 					p[i].Key = n.path[1:]
 					p[i].Value = path[:end]
+					p[i].Offset = pathLen - len(path)
 
 					// we need to go deeper!
 					if end < len(path) {
@@ -407,6 +410,7 @@ walk: // outer loop for walking the tree
 					p = p[:i+1] // expand slice within preallocated capacity
 					p[i].Key = n.path[2:]
 					p[i].Value = path
+					p[i].Offset = pathLen - len(path)
 
 					handle = n.handle
 					return
