@@ -56,11 +56,12 @@ func (rh *ResponseHelper)  DbErr(w http.ResponseWriter, err error) error {
 }
 
 //Status to write custom header in the http response
-func (rh *ResponseHelper)  StatusText(w http.ResponseWriter, res interface{}, statusCode int) error {
+func (rh *ResponseHelper)  StatusText(w http.ResponseWriter, res string, statusCode int) error {
 	rh.enrich(w)
 	w.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	w.WriteHeader(statusCode)
-	return json.NewEncoder(w).Encode(&res)
+	_, err := w.Write([]byte(res))
+	return err
 }
 
 //Status to write custom header in the http response
