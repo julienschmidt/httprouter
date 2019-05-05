@@ -264,3 +264,4 @@ If the HttpRouter is a bit too minimalistic for you, you might try one of the fo
 * [Roxanna](https://github.com/iamthemuffinman/Roxanna): An amalgamation of httprouter, better logging, and hot reload
 * [siesta](https://github.com/VividCortex/siesta): Composable HTTP handlers with contexts
 * [xmux](https://github.com/rs/xmux): xmux is a httprouter fork on top of xhandler (net/context aware)
+* [xmux](https://github.com/twharmon/golite): Light and fast web framework written in Go
