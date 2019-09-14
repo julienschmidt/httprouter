@@ -262,6 +262,5 @@ If the HttpRouter is a bit too minimalistic for you, you might try one of the fo
 * [Neko](https://github.com/rocwong/neko): A lightweight web application framework for Golang
 * [pbgo](https://github.com/chai2010/pbgo): pbgo is a mini RPC/REST framework based on Protobuf
 * [River](https://github.com/abiosoft/river): River is a simple and lightweight REST server
-* [Roxanna](https://github.com/iamthemuffinman/Roxanna): An amalgamation of httprouter, better logging, and hot reload
 * [siesta](https://github.com/VividCortex/siesta): Composable HTTP handlers with contexts
 * [xmux](https://github.com/rs/xmux): xmux is a httprouter fork on top of xhandler (net/context aware)
