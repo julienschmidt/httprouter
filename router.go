@@ -175,39 +175,39 @@ func New() *Router {
 	}
 }
 
-// GET is a shortcut for router.Handle("GET", path, handle)
+// GET is a shortcut for router.Handle(http.MethodGet, path, handle)
 func (r *Router) GET(path string, handle Handle) {
-	r.Handle("GET", path, handle)
+	r.Handle(http.MethodGet, path, handle)
 }
 
-// HEAD is a shortcut for router.Handle("HEAD", path, handle)
+// HEAD is a shortcut for router.Handle(http.MethodHead, path, handle)
 func (r *Router) HEAD(path string, handle Handle) {
-	r.Handle("HEAD", path, handle)
+	r.Handle(http.MethodHead, path, handle)
 }
 
-// OPTIONS is a shortcut for router.Handle("OPTIONS", path, handle)
+// OPTIONS is a shortcut for router.Handle(http.MethodOptions, path, handle)
 func (r *Router) OPTIONS(path string, handle Handle) {
-	r.Handle("OPTIONS", path, handle)
+	r.Handle(http.MethodOptions, path, handle)
 }
 
-// POST is a shortcut for router.Handle("POST", path, handle)
+// POST is a shortcut for router.Handle(http.MethodPost, path, handle)
 func (r *Router) POST(path string, handle Handle) {
-	r.Handle("POST", path, handle)
+	r.Handle(http.MethodPost, path, handle)
 }
 
-// PUT is a shortcut for router.Handle("PUT", path, handle)
+// PUT is a shortcut for router.Handle(http.MethodPut, path, handle)
 func (r *Router) PUT(path string, handle Handle) {
-	r.Handle("PUT", path, handle)
+	r.Handle(http.MethodPut, path, handle)
 }
 
-// PATCH is a shortcut for router.Handle("PATCH", path, handle)
+// PATCH is a shortcut for router.Handle(http.MethodPatch, path, handle)
 func (r *Router) PATCH(path string, handle Handle) {
-	r.Handle("PATCH", path, handle)
+	r.Handle(http.MethodPatch, path, handle)
 }
 
-// DELETE is a shortcut for router.Handle("DELETE", path, handle)
+// DELETE is a shortcut for router.Handle(http.MethodDelete, path, handle)
 func (r *Router) DELETE(path string, handle Handle) {
-	r.Handle("DELETE", path, handle)
+	r.Handle(http.MethodDelete, path, handle)
 }
 
 // Handle registers a new request handle with the given path and method.
@@ -286,7 +286,7 @@ func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
 func (r *Router) allowed(path, reqMethod string) (allow string) {
 	if path == "*" { // server-wide
 		for method := range r.trees {
-			if method == "OPTIONS" {
+			if method == http.MethodOptions {
 				continue
 			}
 
@@ -300,7 +300,7 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 	} else { // specific path
 		for method := range r.trees {
 			// Skip the requested method - we already tried this one
-			if method == reqMethod || method == "OPTIONS" {
+			if method == reqMethod || method == http.MethodOptions {
 				continue
 			}
 
@@ -333,9 +333,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if handle, ps, tsr := root.getValue(path); handle != nil {
 			handle(w, req, ps)
 			return
-		} else if req.Method != "CONNECT" && path != "/" {
+		} else if req.Method != http.MethodConnect && path != "/" {
 			code := 301 // Permanent redirect, request with GET method
-			if req.Method != "GET" {
+			if req.Method != http.MethodGet {
 				// Temporary redirect, request with same method
 				// As of Go 1.3, Go does not support status code 308.
 				code = 307
@@ -366,7 +366,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if req.Method == "OPTIONS" && r.HandleOPTIONS {
+	if req.Method == http.MethodOptions && r.HandleOPTIONS {
 		// Handle OPTIONS requests
 		if allow := r.allowed(path, req.Method); len(allow) > 0 {
 			w.Header().Set("Allow", allow)
