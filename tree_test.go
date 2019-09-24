@@ -11,11 +11,13 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"unsafe"
 )
 
 func printChildren(n *node, prefix string) {
-	fmt.Printf(" %02d:%02d %s%s[%d] %v %t %d \r\n", n.priority, n.maxParams, prefix, n.path, len(n.children), n.handle, n.wildChild, n.nType)
-	for l := len(n.path); l > 0; l-- {
+	path := n.pfx[len(n.children):]
+	fmt.Printf(" %02d:%02d %s%s[%d] %v %t %d \r\n", n.priority, n.maxParams, prefix, path, len(n.children), n.handle, n.wildChild, n.nType)
+	for l := len(path); l > 0; l-- {
 		prefix += " "
 	}
 	for _, child := range n.children {
@@ -75,7 +77,7 @@ func checkPriorities(t *testing.T, n *node) uint32 {
 	if n.priority != prio {
 		t.Errorf(
 			"priority mismatch for node '%s': is %d, should be %d",
-			n.path, n.priority, prio,
+			n.pfx[:len(n.children)], n.priority, prio,
 		)
 	}
 
@@ -97,7 +99,7 @@ func checkMaxParams(t *testing.T, n *node) uint8 {
 	if n.maxParams != maxParams {
 		t.Errorf(
 			"maxParams mismatch for node '%s': is %d, should be %d",
-			n.path, n.maxParams, maxParams,
+			n.pfx[:len(n.children)], n.maxParams, maxParams,
 		)
 	}
 
@@ -105,6 +107,8 @@ func checkMaxParams(t *testing.T, n *node) uint8 {
 }
 
 func TestCountParams(t *testing.T) {
+	fmt.Println(unsafe.Sizeof(node{}))
+
 	if countParams("/path/:param1/static/*catch-all") != 2 {
 		t.Fail()
 	}
