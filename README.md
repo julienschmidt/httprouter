@@ -64,7 +64,7 @@ func main() {
 
 As you can see, `:name` is a *named parameter*. The values are accessible via `httprouter.Params`, which is just a slice of `httprouter.Param`s. You can get the value of a parameter either by its index in the slice, or by using the `ByName(name)` method: `:name` can be retrieved by `ByName("name")`.
 
-**Note:** Since go 1.7 you may also access named parameters from `request.Context` if you're using the `http.Handler` api. See more below under `Why doesn't this work with http.Handler?`.
+When using a `http.Handler` (using `router.Handler` or `http.HandlerFunc`) instead of HttpRouter's handle API using a 3rd function parameter, the named parameters are stored in the `request.Context`. See more below under [Why doesn't this work with http.Handler?](#why-doesnt-this-work-with-httphandler).
 
 Named parameters only match a single path segment:
 
@@ -132,15 +132,17 @@ For even better scalability, the child nodes on each tree level are ordered by p
 
 **It does!** The router itself implements the `http.Handler` interface. Moreover the router provides convenient [adapters for `http.Handler`](https://godoc.org/github.com/julienschmidt/httprouter#Router.Handler)s and [`http.HandlerFunc`](https://godoc.org/github.com/julienschmidt/httprouter#Router.HandlerFunc)s which allows them to be used as a [`httprouter.Handle`](https://godoc.org/github.com/julienschmidt/httprouter#Router.Handle) when registering a route.
 
-~~The only disadvantage is, that no parameter values can be retrieved when a `http.Handler` or `http.HandlerFunc` is used, since there is no efficient way to pass the values with the existing function parameters. Therefore [`httprouter.Handle`](https://godoc.org/github.com/julienschmidt/httprouter#Router.Handle) has a third function parameter.~~
-
-Since go 1.7 you can access named params from `request.Context`.
+Named parameters can be accessed `request.Context`:
 
 ```go
-params := r.Context().Value(httprouter.ParamsKey)
-// or use the helper
-params := httprouter.ParamsFromContext(r.Context())
+func Hello(w http.ResponseWriter, r *http.Request) {
+	params := httprouter.ParamsFromContext(r.Context())
+
+    fmt.Fprintf(w, "hello, %s!\n", params.ByName("name"))
+}
 ```
+
+Alternatively, one can also use `params := r.Context().Value(httprouter.ParamsKey)` instead of the helper function.
 
 Just try it out for yourself, the usage of HttpRouter is very straightforward. The package is compact and minimalistic, but also probably one of the easiest routers to set up.
 
