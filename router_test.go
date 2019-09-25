@@ -500,6 +500,30 @@ func TestRouterLookup(t *testing.T) {
 	}
 }
 
+func TestRouterParamsFromContext(t *testing.T) {
+	routed := false
+	wantParams := Params{Param{"name", "gopher"}}
+	handlerFunc := func(_ http.ResponseWriter, req *http.Request) {
+		// get params from request context
+		params := ParamsFromContext(req.Context())
+
+		if !reflect.DeepEqual(params, wantParams) {
+			t.Fatalf("Wrong parameter values: want %v, got %v", wantParams, params)
+		}
+
+		routed = true
+	}
+	router := New()
+	router.HandlerFunc(http.MethodGet, "/user/:name", handlerFunc)
+
+	w := new(mockResponseWriter)
+	r, _ := http.NewRequest(http.MethodGet, "/user/gopher", nil)
+	router.ServeHTTP(w, r)
+	if !routed {
+		t.Fatal("Routing failed!")
+	}
+}
+
 type mockFileSystem struct {
 	opened bool
 }
