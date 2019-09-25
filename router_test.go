@@ -502,6 +502,7 @@ func TestRouterLookup(t *testing.T) {
 
 func TestRouterParamsFromContext(t *testing.T) {
 	routed := false
+
 	wantParams := Params{Param{"name", "gopher"}}
 	handlerFunc := func(_ http.ResponseWriter, req *http.Request) {
 		// get params from request context
@@ -513,11 +514,31 @@ func TestRouterParamsFromContext(t *testing.T) {
 
 		routed = true
 	}
+
+	var nilParams Params
+	handlerFuncNil := func(_ http.ResponseWriter, req *http.Request) {
+		// get params from request context
+		params := ParamsFromContext(req.Context())
+
+		if !reflect.DeepEqual(params, nilParams) {
+			t.Fatalf("Wrong parameter values: want %v, got %v", nilParams, params)
+		}
+
+		routed = true
+	}
 	router := New()
+	router.HandlerFunc(http.MethodGet, "/user", handlerFuncNil)
 	router.HandlerFunc(http.MethodGet, "/user/:name", handlerFunc)
 
 	w := new(mockResponseWriter)
 	r, _ := http.NewRequest(http.MethodGet, "/user/gopher", nil)
+	router.ServeHTTP(w, r)
+	if !routed {
+		t.Fatal("Routing failed!")
+	}
+
+	routed = false
+	r, _ = http.NewRequest(http.MethodGet, "/user", nil)
 	router.ServeHTTP(w, r)
 	if !routed {
 		t.Fatal("Routing failed!")

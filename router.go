@@ -255,9 +255,11 @@ func (r *Router) Handle(method, path string, handle Handle) {
 func (r *Router) Handler(method, path string, handler http.Handler) {
 	r.Handle(method, path,
 		func(w http.ResponseWriter, req *http.Request, p Params) {
-			ctx := req.Context()
-			ctx = context.WithValue(ctx, ParamsKey, p)
-			req = req.WithContext(ctx)
+			if len(p) > 0 {
+				ctx := req.Context()
+				ctx = context.WithValue(ctx, ParamsKey, p)
+				req = req.WithContext(ctx)
+			}
 			handler.ServeHTTP(w, req)
 		},
 	)
