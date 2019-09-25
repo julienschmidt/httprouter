@@ -301,8 +301,9 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 				nType:     catchAll,
 				maxParams: 1,
 			}
-			if child.maxParams > n.maxParams {
-				n.maxParams = child.maxParams
+			// update maxParams of the parent node
+			if n.maxParams < 1 {
+				n.maxParams = 1
 			}
 			n.children = []*node{child}
 			n.indices = string(path[i])
