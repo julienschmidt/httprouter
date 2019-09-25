@@ -146,6 +146,8 @@ func (n *node) addRoute(path string, handle Handle) {
 
 					// Check if the wildcard matches
 					if len(path) >= len(n.path) && n.path == path[:len(n.path)] &&
+						// Adding a child to a catchAll is not possible
+						n.nType != catchAll &&
 						// Check for longer wildcard, e.g. :name and :names
 						(len(n.path) >= len(path) || path[len(n.path)] == '/') {
 						continue walk
