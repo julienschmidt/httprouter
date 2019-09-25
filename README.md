@@ -136,7 +136,7 @@ Named parameters can be accessed `request.Context`:
 
 ```go
 func Hello(w http.ResponseWriter, r *http.Request) {
-	params := httprouter.ParamsFromContext(r.Context())
+    params := httprouter.ParamsFromContext(r.Context())
 
     fmt.Fprintf(w, "hello, %s!\n", params.ByName("name"))
 }
