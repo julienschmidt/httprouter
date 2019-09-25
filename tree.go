@@ -45,7 +45,7 @@ const (
 
 type node struct {
 	pfx       string // first len(children) byte are indices, rest is prefix
-	children  []*node
+	children  []node
 	handle    Handle
 	wildChild bool
 	nType     nodeType
@@ -121,7 +121,7 @@ func (n *node) addRoute(path string, handle Handle) {
 					}
 				}
 
-				n.children = []*node{&child}
+				n.children = []node{child}
 				// []byte for proper unicode char conversion, see #65
 				n.pfx = string([]byte{prefix[i]}) + path[:i]
 				n.handle = nil
@@ -133,7 +133,7 @@ func (n *node) addRoute(path string, handle Handle) {
 				path = path[i:]
 
 				if n.wildChild {
-					n = n.children[0]
+					n = &n.children[0]
 					prefix = n.pfx[len(n.children):]
 					n.priority++
 
@@ -169,7 +169,7 @@ func (n *node) addRoute(path string, handle Handle) {
 
 				// slash after param
 				if n.nType == param && c == '/' && len(n.children) == 1 {
-					n = n.children[0]
+					n = &n.children[0]
 					prefix = n.pfx[len(n.children):]
 					n.priority++
 					continue walk
@@ -179,7 +179,7 @@ func (n *node) addRoute(path string, handle Handle) {
 				for i := 0; i < len(n.children); i++ {
 					if c == n.pfx[i] {
 						i = n.incrementChildPrio(i)
-						n = n.children[i]
+						n = &n.children[i]
 						prefix = n.pfx[len(n.children):]
 						continue walk
 					}
@@ -189,10 +189,10 @@ func (n *node) addRoute(path string, handle Handle) {
 				if c != ':' && c != '*' {
 					// []byte for proper unicode char conversion, see #65
 					n.pfx = n.pfx[:len(n.children)] + string([]byte{c}) + n.pfx[len(n.children):]
-					child := &node{
+					n.children = append(n.children, node{
 						maxParams: numParams,
-					}
-					n.children = append(n.children, child)
+					})
+					child := &n.children[len(n.children)-1]
 					n.incrementChildPrio(len(n.children) - 1)
 					n = child
 				}
@@ -257,13 +257,12 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 				n.pfx = ":" + n.pfx
 			}
 
-			child := &node{
+			n.children = []node{node{
 				nType:     param,
 				maxParams: numParams,
-			}
-			n.children = []*node{child}
+			}}
 			n.wildChild = true
-			n = child
+			n = &n.children[0]
 			n.priority++
 			numParams--
 
@@ -273,12 +272,11 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 				n.pfx = "/" + path[offset:end]
 				offset = end
 
-				child := &node{
+				n.children = []node{node{
 					maxParams: numParams,
 					priority:  1,
-				}
-				n.children = []*node{child}
-				n = child
+				}}
+				n = &n.children[0]
 			}
 
 		} else { // catchAll
@@ -299,25 +297,23 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 			n.pfx = string(path[i]) + path[offset:i]
 
 			// first node: catchAll node with empty path
-			child := &node{
+			n.children = []node{node{
 				pfx:       "/",
 				wildChild: true,
 				nType:     catchAll,
 				maxParams: 1,
-			}
-			n.children = []*node{child}
-			n = child
+			}}
+			n = &n.children[0]
 			n.priority++
 
 			// second node: node holding the variable
-			child = &node{
+			n.children = []node{node{
 				pfx:       path[i:],
 				nType:     catchAll,
 				maxParams: 1,
 				handle:    handle,
 				priority:  1,
-			}
-			n.children = []*node{child}
+			}}
 
 			return
 		}
@@ -333,7 +329,7 @@ func (n *node) insertChild(numParams uint8, path, fullPath string, handle Handle
 // If no handle can be found, a TSR (trailing slash redirect) recommendation is
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
-func (n *node) getValue(path string) (handle Handle, p Params, tsr bool) {
+func (n node) getValue(path string) (handle Handle, p Params, tsr bool) {
 walk: // outer loop for walking the tree
 	for {
 		prefix := n.pfx[len(n.children):]
@@ -512,7 +508,7 @@ walk: // outer loop for walking the tree
 					for i, max := 0, len(n.children); i < max; i++ {
 						if n.pfx[i] == rb[0] {
 							// continue with child node
-							n = n.children[i]
+							n = &n.children[i]
 							prefix = n.pfx[len(n.children):]
 							continue walk
 						}
@@ -565,7 +561,7 @@ walk: // outer loop for walking the tree
 							// uppercase matches
 							if n.pfx[i] == c {
 								// continue with child node
-								n = n.children[i]
+								n = &n.children[i]
 								prefix = n.pfx[len(n.children):]
 								continue walk
 							}
@@ -578,7 +574,7 @@ walk: // outer loop for walking the tree
 				return ciPath, (fixTrailingSlash && path == "/" && n.handle != nil)
 			}
 
-			n = n.children[0]
+			n = &n.children[0]
 			switch n.nType {
 			case param:
 				// find param end (either '/' or path end)
@@ -594,7 +590,7 @@ walk: // outer loop for walking the tree
 				if k < len(path) {
 					if len(n.children) > 0 {
 						// continue with child node
-						n = n.children[0]
+						n = &n.children[0]
 						prefix = n.pfx[len(n.children):]
 						path = path[k:]
 						continue
@@ -612,7 +608,7 @@ walk: // outer loop for walking the tree
 				} else if fixTrailingSlash && len(n.children) == 1 {
 					// No handle found. Check if a handle for this path + a
 					// trailing slash exists
-					n = n.children[0]
+					n = &n.children[0]
 					if n.pfx[len(n.children):] == "/" && n.handle != nil {
 						return append(ciPath, '/'), true
 					}
@@ -637,7 +633,7 @@ walk: // outer loop for walking the tree
 			if fixTrailingSlash {
 				for i, max := 0, len(n.children); i < max; i++ {
 					if n.pfx[i] == '/' {
-						n = n.children[i]
+						n = &n.children[i]
 						if (len(n.pfx)-len(n.children) == 1 && n.handle != nil) ||
 							(n.nType == catchAll && n.children[0].handle != nil) {
 							return append(ciPath, '/'), true

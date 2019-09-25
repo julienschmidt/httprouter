@@ -21,7 +21,7 @@ func printChildren(n *node, prefix string) {
 		prefix += " "
 	}
 	for _, child := range n.children {
-		printChildren(child, prefix)
+		printChildren(&child, prefix)
 	}
 }
 
@@ -67,7 +67,7 @@ func checkRequests(t *testing.T, tree *node, requests testRequests) {
 func checkPriorities(t *testing.T, n *node) uint32 {
 	var prio uint32
 	for i := range n.children {
-		prio += checkPriorities(t, n.children[i])
+		prio += checkPriorities(t, &n.children[i])
 	}
 
 	if n.handle != nil {
@@ -87,7 +87,7 @@ func checkPriorities(t *testing.T, n *node) uint32 {
 func checkMaxParams(t *testing.T, n *node) uint8 {
 	var maxParams uint8
 	for i := range n.children {
-		params := checkMaxParams(t, n.children[i])
+		params := checkMaxParams(t, &n.children[i])
 		if params > maxParams {
 			maxParams = params
 		}
