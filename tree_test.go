@@ -16,7 +16,7 @@ import (
 
 func printChildren(n *node, prefix string) {
 	path := n.pfx[len(n.children):]
-	fmt.Printf(" %02d:%02d %s%s[%d] %v %t %d \r\n", n.priority, n.maxParams, prefix, path, len(n.children), n.handle, n.wildChild, n.nType)
+	fmt.Printf(" %02d %s%s[%d] %v %t %d \r\n", n.priority, prefix, path, len(n.children), n.handle, n.wildChild, n.nType)
 	for l := len(path); l > 0; l-- {
 		prefix += " "
 	}
@@ -41,9 +41,14 @@ type testRequests []struct {
 	ps         Params
 }
 
+func getParams() *Params {
+	ps := make(Params, 0, 20)
+	return &ps
+}
+
 func checkRequests(t *testing.T, tree *node, requests testRequests) {
 	for _, request := range requests {
-		handler, ps, _ := tree.getValue(request.path)
+		handler, psp, _ := tree.getValue(request.path, getParams)
 
 		if handler == nil {
 			if !request.nilHandler {
@@ -56,6 +61,11 @@ func checkRequests(t *testing.T, tree *node, requests testRequests) {
 			if fakeHandlerValue != request.route {
 				t.Errorf("handle mismatch for route '%s': Wrong handle (%s != %s)", request.path, fakeHandlerValue, request.route)
 			}
+		}
+
+		var ps Params
+		if psp != nil {
+			ps = *psp
 		}
 
 		if !reflect.DeepEqual(ps, request.ps) {
@@ -84,35 +94,13 @@ func checkPriorities(t *testing.T, n *node) uint32 {
 	return prio
 }
 
-func checkMaxParams(t *testing.T, n *node) uint8 {
-	var maxParams uint8
-	for i := range n.children {
-		params := checkMaxParams(t, n.children[i])
-		if params > maxParams {
-			maxParams = params
-		}
-	}
-	if n.nType > root && !n.wildChild {
-		maxParams++
-	}
-
-	if n.maxParams != maxParams {
-		t.Errorf(
-			"maxParams mismatch for node '%s': is %d, should be %d",
-			n.pfx[:len(n.children)], n.maxParams, maxParams,
-		)
-	}
-
-	return maxParams
-}
-
 func TestCountParams(t *testing.T) {
 	fmt.Println(unsafe.Sizeof(node{}))
 
 	if countParams("/path/:param1/static/*catch-all") != 2 {
 		t.Fail()
 	}
-	if countParams(strings.Repeat("/:param", 256)) != 255 {
+	if countParams(strings.Repeat("/:param", 256)) != 256 {
 		t.Fail()
 	}
 }
@@ -154,7 +142,6 @@ func TestTreeAddAndGet(t *testing.T) {
 	})
 
 	checkPriorities(t, tree)
-	checkMaxParams(t, tree)
 }
 
 func TestTreeWildcard(t *testing.T) {
@@ -200,7 +187,6 @@ func TestTreeWildcard(t *testing.T) {
 	})
 
 	checkPriorities(t, tree)
-	checkMaxParams(t, tree)
 }
 
 func catchPanic(testFunc func()) (recv interface{}) {
@@ -354,7 +340,6 @@ func TestTreeCatchMaxParams(t *testing.T) {
 	tree := &node{}
 	var route = "/cmd/*filepath"
 	tree.addRoute(route, fakeHandler(route))
-	checkMaxParams(t, tree)
 }
 
 func TestTreeDoubleWildcard(t *testing.T) {
@@ -446,7 +431,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/doc/",
 	}
 	for _, route := range tsrRoutes {
-		handler, _, tsr := tree.getValue(route)
+		handler, _, tsr := tree.getValue(route, nil)
 		if handler != nil {
 			t.Fatalf("non-nil handler for TSR route '%s", route)
 		} else if !tsr {
@@ -463,7 +448,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/api/world/abc",
 	}
 	for _, route := range noTsrRoutes {
-		handler, _, tsr := tree.getValue(route)
+		handler, _, tsr := tree.getValue(route, nil)
 		if handler != nil {
 			t.Fatalf("non-nil handler for No-TSR route '%s", route)
 		} else if tsr {
@@ -482,7 +467,7 @@ func TestTreeRootTrailingSlashRedirect(t *testing.T) {
 		t.Fatalf("panic inserting test route: %v", recv)
 	}
 
-	handler, _, tsr := tree.getValue("/")
+	handler, _, tsr := tree.getValue("/", nil)
 	if handler != nil {
 		t.Fatalf("non-nil handler")
 	} else if tsr {
@@ -657,7 +642,7 @@ func TestTreeInvalidNodeType(t *testing.T) {
 
 	// normal lookup
 	recv := catchPanic(func() {
-		tree.getValue("/test")
+		tree.getValue("/test", nil)
 	})
 	if rs, ok := recv.(string); !ok || rs != panicMsg {
 		t.Fatalf("Expected panic '"+panicMsg+"', got '%v'", recv)
