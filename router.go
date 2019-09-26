@@ -80,6 +80,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
@@ -125,6 +126,9 @@ func ParamsFromContext(ctx context.Context) Params {
 // handler functions via configurable routes
 type Router struct {
 	trees map[string]*node
+
+	paramsPool sync.Pool
+	maxParams  uint16
 
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
@@ -198,6 +202,18 @@ func New() *Router {
 	}
 }
 
+func (r *Router) getParams() *Params {
+	ps := r.paramsPool.Get().(*Params)
+	*ps = (*ps)[0:0] // reset slice
+	return ps
+}
+
+func (r *Router) putParams(ps *Params) {
+	if ps != nil {
+		r.paramsPool.Put(ps)
+	}
+}
+
 // GET is a shortcut for router.Handle(http.MethodGet, path, handle)
 func (r *Router) GET(path string, handle Handle) {
 	r.Handle(http.MethodGet, path, handle)
@@ -259,6 +275,19 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	}
 
 	root.addRoute(path, handle)
+
+	// Update maxParams
+	if pc := countParams(path); pc > r.maxParams {
+		r.maxParams = pc
+	}
+
+	// Lazy-init paramsPool alloc func
+	if r.paramsPool.New == nil && r.maxParams > 0 {
+		r.paramsPool.New = func() interface{} {
+			ps := make(Params, 0, r.maxParams)
+			return &ps
+		}
+	}
 }
 
 // Handler is an adapter which allows the usage of an http.Handler as a
@@ -319,7 +348,12 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 // the same path with an extra / without the trailing slash should be performed.
 func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
 	if root := r.trees[method]; root != nil {
-		return root.getValue(path)
+		handle, ps, tsr := root.getValue(path, r.getParams)
+		if handle == nil {
+			r.putParams(ps)
+			return nil, nil, tsr
+		}
+		return handle, *ps, tsr
 	}
 	return nil, nil, false
 }
@@ -347,7 +381,7 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 				continue
 			}
 
-			handle, _, _ := r.trees[method].getValue(path)
+			handle, _, _ := r.trees[method].getValue(path, nil)
 			if handle != nil {
 				// Add request method to list of allowed methods
 				allowed = append(allowed, method)
@@ -383,8 +417,13 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 
 	if root := r.trees[req.Method]; root != nil {
-		if handle, ps, tsr := root.getValue(path); handle != nil {
+		if handle, psp, tsr := root.getValue(path, r.getParams); handle != nil {
+			var ps Params
+			if psp != nil {
+				ps = *psp
+			}
 			handle(w, req, ps)
+			r.putParams(psp)
 			return
 		} else if req.Method != http.MethodConnect && path != "/" {
 			code := 301 // Permanent redirect, request with GET method
