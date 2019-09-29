@@ -421,28 +421,25 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if req.Method == http.MethodOptions && r.HandleOPTIONS {
 		// Handle OPTIONS requests
-		if allow := r.allowed(path, http.MethodOptions); len(allow) > 0 {
+		if allow := r.allowed(path, http.MethodOptions); allow != "" {
 			w.Header().Set("Allow", allow)
 			if r.GlobalOPTIONS != nil {
 				r.GlobalOPTIONS.ServeHTTP(w, req)
 			}
 			return
 		}
-	} else {
-		// Handle 405
-		if r.HandleMethodNotAllowed {
-			if allow := r.allowed(path, req.Method); len(allow) > 0 {
-				w.Header().Set("Allow", allow)
-				if r.MethodNotAllowed != nil {
-					r.MethodNotAllowed.ServeHTTP(w, req)
-				} else {
-					http.Error(w,
-						http.StatusText(http.StatusMethodNotAllowed),
-						http.StatusMethodNotAllowed,
-					)
-				}
-				return
+	} else if r.HandleMethodNotAllowed { // Handle 405
+		if allow := r.allowed(path, req.Method); allow != "" {
+			w.Header().Set("Allow", allow)
+			if r.MethodNotAllowed != nil {
+				r.MethodNotAllowed.ServeHTTP(w, req)
+			} else {
+				http.Error(w,
+					http.StatusText(http.StatusMethodNotAllowed),
+					http.StatusMethodNotAllowed,
+				)
 			}
+			return
 		}
 	}
 
