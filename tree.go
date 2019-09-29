@@ -48,10 +48,10 @@ type node struct {
 	wildChild bool
 	nType     nodeType
 	maxParams uint8
+	priority  uint32
 	indices   string
 	children  []*node
 	handle    Handle
-	priority  uint32
 }
 
 // increments priority of the given child and reorders if necessary
