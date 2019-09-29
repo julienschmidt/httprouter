@@ -496,7 +496,7 @@ func TestRouterLookup(t *testing.T) {
 	// insert route and try again
 	router.GET("/user/:name", wantHandle)
 
-	handle, params, tsr := router.Lookup(http.MethodGet, "/user/gopher")
+	handle, params, _ := router.Lookup(http.MethodGet, "/user/gopher")
 	if handle == nil {
 		t.Fatal("Got no handle!")
 	} else {
