@@ -124,7 +124,7 @@ func ParamsFromContext(ctx context.Context) Params {
 // Router is a http.Handler which can be used to dispatch requests to different
 // handler functions via configurable routes
 type Router struct {
-	trees map[string]*node
+	trees methodIndex
 
 	paramsPool sync.Pool
 	maxParams  uint16
@@ -252,16 +252,7 @@ func (r *Router) Handle(method, path string, handle Handle) {
 		panic("path must begin with '/' in path '" + path + "'")
 	}
 
-	if r.trees == nil {
-		r.trees = make(map[string]*node)
-	}
-
-	root := r.trees[method]
-	if root == nil {
-		root = new(node)
-		r.trees[method] = root
-	}
-
+	root := r.trees.init(method)
 	root.addRoute(path, handle)
 
 	// Update maxParams
@@ -335,7 +326,7 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 // values. Otherwise the third return value indicates whether a redirection to
 // the same path with an extra / without the trailing slash should be performed.
 func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
-	if root := r.trees[method]; root != nil {
+	if root := r.trees.get(method); root != nil {
 		handle, ps, tsr := root.getValue(path, r.getParams)
 		if handle == nil {
 			r.putParams(ps)
@@ -347,37 +338,37 @@ func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
 }
 
 func (r *Router) allowed(path, reqMethod string) (allow string) {
-	if path == "*" { // server-wide
-		for method := range r.trees {
-			if method == http.MethodOptions {
-				continue
-			}
+	// if path == "*" { // server-wide
+	// 	for i, tree := range r.trees {
+	// 		if i == idxOPTIONS || tree == nil {
+	// 			continue
+	// 		}
 
-			// add request method to list of allowed methods
-			if len(allow) == 0 {
-				allow = method
-			} else {
-				allow += ", " + method
-			}
-		}
-	} else { // specific path
-		for method := range r.trees {
-			// Skip the requested method - we already tried this one
-			if method == reqMethod || method == http.MethodOptions {
-				continue
-			}
+	// 		// add request method to list of allowed methods
+	// 		if len(allow) == 0 {
+	// 			allow = method
+	// 		} else {
+	// 			allow += ", " + method
+	// 		}
+	// 	}
+	// 	} else { // specific path
+	// 		for method := range r.trees {
+	// 			// Skip the requested method - we already tried this one
+	// 			if method == reqMethod || method == http.MethodOptions {
+	// 				continue
+	// 			}
 
-			handle, _, _ := r.trees[method].getValue(path, nil)
-			if handle != nil {
-				// add request method to list of allowed methods
-				if len(allow) == 0 {
-					allow = method
-				} else {
-					allow += ", " + method
-				}
-			}
-		}
-	}
+	// 			handle, _, _ := r.trees[method].getValue(path)
+	// 			if handle != nil {
+	// 				// add request method to list of allowed methods
+	// 				if len(allow) == 0 {
+	// 					allow = method
+	// 				} else {
+	// 					allow += ", " + method
+	// 				}
+	// 			}
+	// 		}
+	// }
 	if len(allow) > 0 {
 		allow += ", OPTIONS"
 	}
@@ -392,7 +383,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	path := req.URL.Path
 
-	if root := r.trees[req.Method]; root != nil {
+	if root := r.trees.get(req.Method); root != nil {
 		if handle, psp, tsr := root.getValue(path, r.getParams); handle != nil {
 			var ps Params
 			if psp != nil {
