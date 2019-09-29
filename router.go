@@ -79,6 +79,7 @@ package httprouter
 import (
 	"context"
 	"net/http"
+	"strings"
 )
 
 // Handle is a function that can be registered to a route to handle HTTP
@@ -313,18 +314,15 @@ func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
 }
 
 func (r *Router) allowed(path, reqMethod string) (allow string) {
+	allowed := make([]string, 0, 9)
+
 	if path == "*" { // server-wide
 		for method := range r.trees {
 			if method == http.MethodOptions {
 				continue
 			}
-
-			// add request method to list of allowed methods
-			if len(allow) == 0 {
-				allow = method
-			} else {
-				allow += ", " + method
-			}
+			// Add request method to list of allowed methods
+			allowed = append(allowed, method)
 		}
 	} else { // specific path
 		for method := range r.trees {
@@ -335,17 +333,27 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 
 			handle, _, _ := r.trees[method].getValue(path)
 			if handle != nil {
-				// add request method to list of allowed methods
-				if len(allow) == 0 {
-					allow = method
-				} else {
-					allow += ", " + method
-				}
+				// Add request method to list of allowed methods
+				allowed = append(allowed, method)
 			}
 		}
 	}
-	if len(allow) > 0 {
-		allow += ", OPTIONS"
+
+	if len(allowed) > 0 {
+		// Add request method to list of allowed methods
+		allowed = append(allowed, http.MethodOptions)
+
+		// Sort allowed methods.
+		// sort.Strings(allowed) unfortunately causes unnecessary allocations
+		// due to allowed being moved to the heap and interface conversion
+		for i, l := 1, len(allowed); i < l; i++ {
+			for j := i; j > 0 && allowed[j] < allowed[j-1]; j-- {
+				allowed[j], allowed[j-1] = allowed[j-1], allowed[j]
+			}
+		}
+
+		// return as comma separated list
+		return strings.Join(allowed, ", ")
 	}
 	return
 }

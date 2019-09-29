@@ -216,6 +216,27 @@ func TestRouterChaining(t *testing.T) {
 	}
 }
 
+func BenchmarkAllowed(b *testing.B) {
+	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+
+	router := New()
+	router.POST("/path", handlerFunc)
+	router.GET("/path", handlerFunc)
+
+	b.Run("Global", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			_ = router.allowed("*", http.MethodOptions)
+		}
+	})
+	b.Run("Path", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			_ = router.allowed("/path", http.MethodOptions)
+		}
+	})
+}
+
 func TestRouterOPTIONS(t *testing.T) {
 	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
 
@@ -229,7 +250,7 @@ func TestRouterOPTIONS(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !(w.Code == http.StatusOK) {
 		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
-	} else if allow := w.Header().Get("Allow"); allow != "POST, OPTIONS" {
+	} else if allow := w.Header().Get("Allow"); allow != "OPTIONS, POST" {
 		t.Error("unexpected Allow header value: " + allow)
 	}
 
@@ -239,7 +260,7 @@ func TestRouterOPTIONS(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !(w.Code == http.StatusOK) {
 		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
-	} else if allow := w.Header().Get("Allow"); allow != "POST, OPTIONS" {
+	} else if allow := w.Header().Get("Allow"); allow != "OPTIONS, POST" {
 		t.Error("unexpected Allow header value: " + allow)
 	}
 
@@ -260,7 +281,7 @@ func TestRouterOPTIONS(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !(w.Code == http.StatusOK) {
 		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
-	} else if allow := w.Header().Get("Allow"); allow != "POST, GET, OPTIONS" && allow != "GET, POST, OPTIONS" {
+	} else if allow := w.Header().Get("Allow"); allow != "GET, OPTIONS, POST" {
 		t.Error("unexpected Allow header value: " + allow)
 	}
 
@@ -270,7 +291,7 @@ func TestRouterOPTIONS(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !(w.Code == http.StatusOK) {
 		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
-	} else if allow := w.Header().Get("Allow"); allow != "POST, GET, OPTIONS" && allow != "GET, POST, OPTIONS" {
+	} else if allow := w.Header().Get("Allow"); allow != "GET, OPTIONS, POST" {
 		t.Error("unexpected Allow header value: " + allow)
 	}
 
@@ -287,7 +308,7 @@ func TestRouterOPTIONS(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !(w.Code == http.StatusOK) {
 		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
-	} else if allow := w.Header().Get("Allow"); allow != "POST, GET, OPTIONS" && allow != "GET, POST, OPTIONS" {
+	} else if allow := w.Header().Get("Allow"); allow != "GET, OPTIONS, POST" {
 		t.Error("unexpected Allow header value: " + allow)
 	}
 	if custom {
@@ -318,7 +339,7 @@ func TestRouterNotAllowed(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !(w.Code == http.StatusMethodNotAllowed) {
 		t.Errorf("NotAllowed handling failed: Code=%d, Header=%v", w.Code, w.Header())
-	} else if allow := w.Header().Get("Allow"); allow != "POST, OPTIONS" {
+	} else if allow := w.Header().Get("Allow"); allow != "OPTIONS, POST" {
 		t.Error("unexpected Allow header value: " + allow)
 	}
 
@@ -332,7 +353,7 @@ func TestRouterNotAllowed(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !(w.Code == http.StatusMethodNotAllowed) {
 		t.Errorf("NotAllowed handling failed: Code=%d, Header=%v", w.Code, w.Header())
-	} else if allow := w.Header().Get("Allow"); allow != "POST, DELETE, OPTIONS" && allow != "DELETE, POST, OPTIONS" {
+	} else if allow := w.Header().Get("Allow"); allow != "DELETE, OPTIONS, POST" {
 		t.Error("unexpected Allow header value: " + allow)
 	}
 
@@ -350,7 +371,7 @@ func TestRouterNotAllowed(t *testing.T) {
 	if w.Code != http.StatusTeapot {
 		t.Errorf("unexpected response code %d want %d", w.Code, http.StatusTeapot)
 	}
-	if allow := w.Header().Get("Allow"); allow != "POST, DELETE, OPTIONS" && allow != "DELETE, POST, OPTIONS" {
+	if allow := w.Header().Get("Allow"); allow != "DELETE, OPTIONS, POST" {
 		t.Error("unexpected Allow header value: " + allow)
 	}
 }
