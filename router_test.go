@@ -600,3 +600,48 @@ func TestRouterServeFiles(t *testing.T) {
 		t.Error("serving file failed")
 	}
 }
+
+func TestRouterUseRawPathSuccess(t *testing.T) {
+	router := New()
+	router.UseRawPath = true
+
+	routed := false
+	router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, ps Params) {
+		routed = true
+		want := Params{Param{"name", "abc/123"}}
+		if !reflect.DeepEqual(ps, want) {
+			t.Fatalf("wrong wildcard values: want %v, got %v", want, ps)
+		}
+	})
+
+	w := new(mockResponseWriter)
+
+	req, _ := http.NewRequest("GET", "/user/abc%2F123", nil)
+	router.ServeHTTP(w, req)
+
+	if !routed {
+		t.Fatal("routing failed")
+	}
+}
+
+func TestRouterUseRawPathFailure(t *testing.T) {
+	router := New()
+
+	routed := false
+	router.Handle("GET", "/user/:name", func(w http.ResponseWriter, r *http.Request, ps Params) {
+		routed = true
+		want := Params{Param{"name", "abc/123"}}
+		if !reflect.DeepEqual(ps, want) {
+			t.Fatalf("wrong wildcard values: want %v, got %v", want, ps)
+		}
+	})
+
+	w := new(mockResponseWriter)
+
+	req, _ := http.NewRequest("GET", "/user/abc%2F123", nil)
+	router.ServeHTTP(w, req)
+
+	if routed {
+		t.Fatal("routing unexpectedly succeeded")
+	}
+}

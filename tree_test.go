@@ -193,6 +193,8 @@ func TestTreeWildcard(t *testing.T) {
 		{"/files/js/inc/framework.js", false, "/files/:dir/*filepath", Params{Param{"dir", "js"}, Param{"filepath", "/inc/framework.js"}}},
 		{"/info/gordon/public", false, "/info/:user/public", Params{Param{"user", "gordon"}}},
 		{"/info/gordon/project/go", false, "/info/:user/project/:project", Params{Param{"user", "gordon"}, Param{"project", "go"}}},
+		{"/search/something%2Fencoded", false, "/search/:query", Params{Param{"query", "something/encoded"}}},
+		{"/search/invalid%encoding", false, "/search/:query", Params{Param{"query", "invalid%encoding"}}},
 	})
 
 	checkPriorities(t, tree)
