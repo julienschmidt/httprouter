@@ -156,6 +156,9 @@ type Router struct {
 	// Custom OPTIONS handlers take priority over automatic replies.
 	HandleOPTIONS bool
 
+	// Cached value of global (*) allowed methods
+	globalAllowed string
+
 	// Configurable http.Handler which is called when no matching route is
 	// found. If it is not set, http.NotFound is used.
 	NotFound http.Handler
@@ -245,6 +248,8 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	if root == nil {
 		root = new(node)
 		r.trees[method] = root
+
+		r.globalAllowed = r.allowed("*", "")
 	}
 
 	root.addRoute(path, handle)
@@ -317,12 +322,17 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 	allowed := make([]string, 0, 9)
 
 	if path == "*" { // server-wide
-		for method := range r.trees {
-			if method == http.MethodOptions {
-				continue
+		// empty method is used for internal calls to refresh the cache
+		if reqMethod == "" {
+			for method := range r.trees {
+				if method == http.MethodOptions {
+					continue
+				}
+				// Add request method to list of allowed methods
+				allowed = append(allowed, method)
 			}
-			// Add request method to list of allowed methods
-			allowed = append(allowed, method)
+		} else {
+			return r.globalAllowed
 		}
 	} else { // specific path
 		for method := range r.trees {
@@ -405,7 +415,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if req.Method == http.MethodOptions && r.HandleOPTIONS {
 		// Handle OPTIONS requests
-		if allow := r.allowed(path, req.Method); len(allow) > 0 {
+		if allow := r.allowed(path, http.MethodOptions); len(allow) > 0 {
 			w.Header().Set("Allow", allow)
 			return
 		}
