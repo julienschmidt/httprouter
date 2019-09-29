@@ -146,6 +146,25 @@ Alternatively, one can also use `params := r.Context().Value(httprouter.ParamsKe
 
 Just try it out for yourself, the usage of HttpRouter is very straightforward. The package is compact and minimalistic, but also probably one of the easiest routers to set up.
 
+## Automatic OPTIONS responses and CORS
+
+One might wish to modify automatic responses to OPTIONS requests, e.g. to support [CORS preflight requests](https://developer.mozilla.org/en-US/docs/Glossary/preflight_request) or to set other headers.
+This can be achieved using the [`Router.GlobalOPTIONS`](https://godoc.org/github.com/julienschmidt/httprouter#Router.GlobalOPTIONS) handler:
+
+```go
+router.GlobalOPTIONS = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    if r.Header.Get("Access-Control-Request-Method") != "" {
+        // Set CORS headers
+        header := w.Header()
+        header.Set("Access-Control-Allow-Methods", r.Header.Get("Allow"))
+        header.Set("Access-Control-Allow-Origin", "*")
+    }
+
+    // Adjust status code to 204
+    w.WriteHeader(http.StatusNoContent)
+})
+```
+
 ## Where can I find Middleware *X*?
 
 This package just provides a very efficient request router with a few extra features. The router is just a [`http.Handler`](https://golang.org/pkg/net/http/#Handler), you can chain any http.Handler compatible middleware before the router, for example the [Gorilla handlers](http://www.gorillatoolkit.org/pkg/handlers). Or you could [just write your own](https://justinas.org/writing-http-middleware-in-go/), it's very easy!

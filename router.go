@@ -156,6 +156,12 @@ type Router struct {
 	// Custom OPTIONS handlers take priority over automatic replies.
 	HandleOPTIONS bool
 
+	// An optional http.Handler that is called on automatic OPTIONS requests.
+	// The handler is only called if HandleOPTIONS is true and no OPTIONS
+	// handler for the specific path was set.
+	// The "Allowed" header is set before calling the handler.
+	GlobalOPTIONS http.Handler
+
 	// Cached value of global (*) allowed methods
 	globalAllowed string
 
@@ -417,6 +423,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		// Handle OPTIONS requests
 		if allow := r.allowed(path, http.MethodOptions); len(allow) > 0 {
 			w.Header().Set("Allow", allow)
+			if r.GlobalOPTIONS != nil {
+				r.GlobalOPTIONS.ServeHTTP(w, req)
+			}
 			return
 		}
 	} else {

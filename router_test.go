@@ -274,12 +274,18 @@ func TestRouterOPTIONS(t *testing.T) {
 	// add another method
 	router.GET("/path", handlerFunc)
 
+	// set a global OPTIONS handler
+	router.GlobalOPTIONS = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Adjust status code to 204
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	// test again
 	// * (server)
 	r, _ = http.NewRequest(http.MethodOptions, "*", nil)
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, r)
-	if !(w.Code == http.StatusOK) {
+	if !(w.Code == http.StatusNoContent) {
 		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
 	} else if allow := w.Header().Get("Allow"); allow != "GET, OPTIONS, POST" {
 		t.Error("unexpected Allow header value: " + allow)
@@ -289,7 +295,7 @@ func TestRouterOPTIONS(t *testing.T) {
 	r, _ = http.NewRequest(http.MethodOptions, "/path", nil)
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, r)
-	if !(w.Code == http.StatusOK) {
+	if !(w.Code == http.StatusNoContent) {
 		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
 	} else if allow := w.Header().Get("Allow"); allow != "GET, OPTIONS, POST" {
 		t.Error("unexpected Allow header value: " + allow)
@@ -306,7 +312,7 @@ func TestRouterOPTIONS(t *testing.T) {
 	r, _ = http.NewRequest(http.MethodOptions, "*", nil)
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, r)
-	if !(w.Code == http.StatusOK) {
+	if !(w.Code == http.StatusNoContent) {
 		t.Errorf("OPTIONS handling failed: Code=%d, Header=%v", w.Code, w.Header())
 	} else if allow := w.Header().Get("Allow"); allow != "GET, OPTIONS, POST" {
 		t.Error("unexpected Allow header value: " + allow)
