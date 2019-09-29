@@ -417,13 +417,13 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 
 	if root := r.trees[req.Method]; root != nil {
-		if handle, psp, tsr := root.getValue(path, r.getParams); handle != nil {
-			var ps Params
-			if psp != nil {
-				ps = *psp
+		if handle, ps, tsr := root.getValue(path, r.getParams); handle != nil {
+			if ps != nil {
+				handle(w, req, *ps)
+				r.putParams(ps)
+			} else {
+				handle(w, req, nil)
 			}
-			handle(w, req, ps)
-			r.putParams(psp)
 			return
 		} else if req.Method != http.MethodConnect && path != "/" {
 			code := 301 // Permanent redirect, request with GET method
