@@ -17,20 +17,14 @@ func min(a, b int) int {
 	return b
 }
 
-const maxParamCount uint16 = ^uint16(0)
-
 func countParams(path string) uint16 {
 	var n uint
 	for i := 0; i < len(path); i++ {
-		if path[i] != ':' && path[i] != '*' {
-			continue
+		switch path[i] {
+		case ':', '*':
+			n++
 		}
-		n++
 	}
-	if n >= uint(maxParamCount) {
-		return maxParamCount
-	}
-
 	return uint16(n)
 }
 
