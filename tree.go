@@ -47,12 +47,12 @@ type node struct {
 	handle    Handle
 }
 
-// increments priority of the given child and reorders if necessary
+// Increments priority of the given child and reorders if necessary
 func (n *node) incrementChildPrio(pos int) int {
 	n.children[pos].priority++
 	prio := n.children[pos].priority
 
-	// adjust position (move to front)
+	// Adjust position (move to front)
 	newPos := pos
 	for newPos > 0 && n.children[newPos-1].priority < prio {
 		// swap node positions
@@ -61,11 +61,11 @@ func (n *node) incrementChildPrio(pos int) int {
 		newPos--
 	}
 
-	// build new index char string
+	// Build new index char string
 	if newPos != pos {
-		n.indices = n.indices[:newPos] + // unchanged prefix, might be empty
-			n.indices[pos:pos+1] + // the index char we move
-			n.indices[newPos:pos] + n.indices[pos+1:] // rest without char at 'pos'
+		n.indices = n.indices[:newPos] + // Unchanged prefix, might be empty
+			n.indices[pos:pos+1] + // The index char we move
+			n.indices[newPos:pos] + n.indices[pos+1:] // Rest without char at 'pos'
 	}
 
 	return newPos
@@ -77,7 +77,7 @@ func (n *node) addRoute(path string, handle Handle) {
 	fullPath := path
 	n.priority++
 
-	// non-empty tree
+	// Non-empty tree
 	if len(n.path) > 0 || len(n.children) > 0 {
 	walk:
 		for {
@@ -142,7 +142,7 @@ func (n *node) addRoute(path string, handle Handle) {
 
 				c := path[0]
 
-				// slash after param
+				// '/' after param
 				if n.nType == param && c == '/' && len(n.children) == 1 {
 					n = n.children[0]
 					n.priority++
@@ -185,20 +185,20 @@ func (n *node) addRoute(path string, handle Handle) {
 }
 
 func (n *node) insertChild(path, fullPath string, handle Handle) {
-	var offset int // already handled bytes of the path
+	var offset int // Already processed bytes of the path
 
-	// find prefix until first wildcard (beginning with ':'' or '*'')
+	// Find prefix until first wildcard (beginning with ':' or '*')
 	for i, max := 0, len(path); i < max; i++ {
 		c := path[i]
 		if c != ':' && c != '*' {
 			continue
 		}
 
-		// find wildcard end (either '/' or path end)
+		// Find wildcard end (either '/' or path end)
 		end := i + 1
 		for end < max && path[end] != '/' {
 			switch path[end] {
-			// the wildcard name must not contain ':' and '*'
+			// The wildcard name must not contain ':' and '*'
 			case ':', '*':
 				panic("only one wildcard per path segment is allowed, has: '" +
 					path[i:] + "' in path '" + fullPath + "'")
@@ -207,20 +207,20 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 			}
 		}
 
-		// check if this Node existing children which would be
+		// Check if this Node existing children which would be
 		// unreachable if we insert the wildcard here
 		if len(n.children) > 0 {
 			panic("wildcard route '" + path[i:end] +
 				"' conflicts with existing children in path '" + fullPath + "'")
 		}
 
-		// check if the wildcard has a name
+		// Check if the wildcard has a name
 		if end-i < 2 {
 			panic("wildcards must be named with a non-empty name in path '" + fullPath + "'")
 		}
 
 		if c == ':' { // param
-			// split path at the beginning of the wildcard
+			// Split path at the beginning of the wildcard
 			if i > 0 {
 				n.path = path[offset:i]
 				offset = i
@@ -234,7 +234,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 			n = child
 			n.priority++
 
-			// if the path doesn't end with the wildcard, then there
+			// If the path doesn't end with the wildcard, then there
 			// will be another non-wildcard subpath starting with '/'
 			if end < max {
 				n.path = path[offset:end]
@@ -256,7 +256,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 				panic("catch-all conflicts with existing handle for the path segment root in path '" + fullPath + "'")
 			}
 
-			// currently fixed width 1 for '/'
+			// Currently fixed width 1 for '/'
 			i--
 			if path[i] != '/' {
 				panic("no / before catch-all in path '" + fullPath + "'")
@@ -264,7 +264,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 
 			n.path = path[offset:i]
 
-			// first node: catchAll node with empty path
+			// First node: catchAll node with empty path
 			child := &node{
 				wildChild: true,
 				nType:     catchAll,
@@ -274,7 +274,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 			n = child
 			n.priority++
 
-			// second node: node holding the variable
+			// Second node: node holding the variable
 			child = &node{
 				path:     path[i:],
 				nType:    catchAll,
@@ -287,7 +287,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 		}
 	}
 
-	// insert remaining path part and handle to the leaf
+	// Insert remaining path part and handle to the leaf
 	n.path = path[offset:]
 	n.handle = handle
 }
@@ -298,7 +298,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
 func (n *node) getValue(path string, params func() *Params) (handle Handle, ps *Params, tsr bool) {
-walk: // outer loop for walking the tree
+walk: // Outer loop for walking the tree
 	for {
 		if len(path) > len(n.path) {
 			if path[:len(n.path)] == n.path {
@@ -323,30 +323,31 @@ walk: // outer loop for walking the tree
 
 				}
 
-				// handle wildcard child
+				// Handle wildcard child
 				n = n.children[0]
 				switch n.nType {
 				case param:
-					// find param end (either '/' or path end)
+					// Find param end (either '/' or path end)
 					end := 0
 					for end < len(path) && path[end] != '/' {
 						end++
 					}
 
-					// save param value
+					// Save param value
 					if params != nil {
 						if ps == nil {
 							ps = params()
 						}
+						// Expand slice within preallocated capacity
 						i := len(*ps)
-						*ps = (*ps)[:i+1] // expand slice within preallocated capacity
+						*ps = (*ps)[:i+1]
 						(*ps)[i] = Param{
 							Key:   n.path[1:],
 							Value: path[:end],
 						}
 					}
 
-					// we need to go deeper!
+					// We need to go deeper!
 					if end < len(path) {
 						if len(n.children) > 0 {
 							path = path[end:]
@@ -371,13 +372,14 @@ walk: // outer loop for walking the tree
 					return
 
 				case catchAll:
-					// save param value
+					// Save param value
 					if params != nil {
 						if ps == nil {
 							ps = params()
 						}
+						// Expand slice within preallocated capacity
 						i := len(*ps)
-						*ps = (*ps)[:i+1] // expand slice within preallocated capacity
+						*ps = (*ps)[:i+1]
 						(*ps)[i] = Param{
 							Key:   n.path[2:],
 							Value: path,
@@ -433,13 +435,13 @@ walk: // outer loop for walking the tree
 func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPath []byte, found bool) {
 	return n.findCaseInsensitivePathRec(
 		path,
-		make([]byte, 0, len(path)+1), // preallocate enough memory for new path
-		[4]byte{},                    // empty rune buffer
+		make([]byte, 0, len(path)+1), // Preallocate enough memory for new path
+		[4]byte{},                    // Empty rune buffer
 		fixTrailingSlash,
 	)
 }
 
-// shift bytes in array by n bytes left
+// Shift bytes in array by n bytes left
 func shiftNRuneBytes(rb [4]byte, n int) [4]byte {
 	switch n {
 	case 0:
@@ -455,14 +457,13 @@ func shiftNRuneBytes(rb [4]byte, n int) [4]byte {
 	}
 }
 
-// recursive case-insensitive lookup function used by n.findCaseInsensitivePath
+// Recursive case-insensitive lookup function used by n.findCaseInsensitivePath
 func (n *node) findCaseInsensitivePathRec(path string, ciPath []byte, rb [4]byte, fixTrailingSlash bool) ([]byte, bool) {
 	npLen := len(n.path)
 
-walk: // outer loop for walking the tree
+walk: // Outer loop for walking the tree
 	for len(path) >= npLen && (npLen == 0 || strings.EqualFold(path[1:npLen], n.path[1:])) {
-		// add common prefix to result
-
+		// Add common prefix to result
 		oldPath := path
 		path = path[npLen:]
 		ciPath = append(ciPath, n.path...)
@@ -472,11 +473,11 @@ walk: // outer loop for walking the tree
 			// we can just look up the next child node and continue to walk down
 			// the tree
 			if !n.wildChild {
-				// skip rune bytes already processed
+				// Skip rune bytes already processed
 				rb = shiftNRuneBytes(rb, npLen)
 
 				if rb[0] != 0 {
-					// old rune not finished
+					// Old rune not finished
 					for i := 0; i < len(n.indices); i++ {
 						if n.indices[i] == rb[0] {
 							// continue with child node
@@ -486,12 +487,12 @@ walk: // outer loop for walking the tree
 						}
 					}
 				} else {
-					// process a new rune
+					// Process a new rune
 					var rv rune
 
-					// find rune start
-					// runes are up to 4 byte long,
-					// -4 would definitely be another rune
+					// Find rune start.
+					// Runes are up to 4 byte long,
+					// -4 would definitely be another rune.
 					var off int
 					for max := min(npLen, 3); off < max; off++ {
 						if i := npLen - off; utf8.RuneStart(oldPath[i]) {
@@ -501,15 +502,15 @@ walk: // outer loop for walking the tree
 						}
 					}
 
-					// calculate lowercase bytes of current rune
+					// Calculate lowercase bytes of current rune
 					lo := unicode.ToLower(rv)
 					utf8.EncodeRune(rb[:], lo)
 
-					// skip already processed bytes
+					// Skip already processed bytes
 					rb = shiftNRuneBytes(rb, off)
 
 					for i := 0; i < len(n.indices); i++ {
-						// lowercase matches
+						// Lowercase matches
 						if n.indices[i] == rb[0] {
 							// must use a recursive approach since both the
 							// uppercase byte and the lowercase byte might exist
@@ -523,16 +524,16 @@ walk: // outer loop for walking the tree
 						}
 					}
 
-					// if we found no match, the same for the uppercase rune,
+					// If we found no match, the same for the uppercase rune,
 					// if it differs
 					if up := unicode.ToUpper(rv); up != lo {
 						utf8.EncodeRune(rb[:], up)
 						rb = shiftNRuneBytes(rb, off)
 
 						for i, c := 0, rb[0]; i < len(n.indices); i++ {
-							// uppercase matches
+							// Uppercase matches
 							if n.indices[i] == c {
-								// continue with child node
+								// Continue with child node
 								n = n.children[i]
 								npLen = len(n.path)
 								continue walk
@@ -549,19 +550,19 @@ walk: // outer loop for walking the tree
 			n = n.children[0]
 			switch n.nType {
 			case param:
-				// find param end (either '/' or path end)
+				// Find param end (either '/' or path end)
 				k := 0
 				for k < len(path) && path[k] != '/' {
 					k++
 				}
 
-				// add param value to case insensitive path
+				// Add param value to case insensitive path
 				ciPath = append(ciPath, path[:k]...)
 
-				// we need to go deeper!
+				// We need to go deeper!
 				if k < len(path) {
 					if len(n.children) > 0 {
-						// continue with child node
+						// Continue with child node
 						n = n.children[0]
 						npLen = len(n.path)
 						path = path[k:]
