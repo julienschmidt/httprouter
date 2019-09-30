@@ -39,14 +39,27 @@ type testRequests []struct {
 	ps         Params
 }
 
-func getParams() *Params {
+func makeParams() *Params {
 	ps := make(Params, 0, 20)
 	return &ps
 }
 
+func saveParam(ps *Params, k, v string) *Params {
+	if ps == nil {
+		ps = makeParams()
+	}
+	i := len(*ps)
+	*ps = (*ps)[:i+1] // expand slice within preallocated capacity
+	(*ps)[i] = Param{
+		Key:   k,
+		Value: v,
+	}
+	return ps
+}
+
 func checkRequests(t *testing.T, tree *node, requests testRequests) {
 	for _, request := range requests {
-		handler, psp, _ := tree.getValue(request.path, getParams)
+		handler, psp, _ := tree.getValue(request.path, saveParam)
 
 		if handler == nil {
 			if !request.nilHandler {

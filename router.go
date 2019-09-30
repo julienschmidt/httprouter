@@ -208,6 +208,19 @@ func (r *Router) getParams() *Params {
 	return ps
 }
 
+func (r *Router) saveParam(ps *Params, k, v string) *Params {
+	if ps == nil {
+		ps = r.getParams()
+	}
+	i := len(*ps)
+	*ps = (*ps)[:i+1] // expand slice within preallocated capacity
+	(*ps)[i] = Param{
+		Key:   k,
+		Value: v,
+	}
+	return ps
+}
+
 func (r *Router) putParams(ps *Params) {
 	if ps != nil {
 		r.paramsPool.Put(ps)
@@ -354,7 +367,7 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 // the same path with an extra / without the trailing slash should be performed.
 func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
 	if root := r.trees[method]; root != nil {
-		handle, ps, tsr := root.getValue(path, r.getParams)
+		handle, ps, tsr := root.getValue(path, r.saveParam)
 		if handle == nil {
 			r.putParams(ps)
 			return nil, nil, tsr
@@ -426,7 +439,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 
 	if root := r.trees[req.Method]; root != nil {
-		if handle, ps, tsr := root.getValue(path, r.getParams); handle != nil {
+		if handle, ps, tsr := root.getValue(path, r.saveParam); handle != nil {
 			if ps != nil {
 				handle(w, req, *ps)
 				r.putParams(ps)
