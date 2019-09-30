@@ -353,6 +353,9 @@ func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
 			r.putParams(ps)
 			return nil, nil, tsr
 		}
+		if ps == nil {
+			return handle, nil, tsr
+		}
 		return handle, *ps, tsr
 	}
 	return nil, nil, false

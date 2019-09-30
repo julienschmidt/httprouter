@@ -495,7 +495,6 @@ func TestRouterLookup(t *testing.T) {
 
 	// insert route and try again
 	router.GET("/user/:name", wantHandle)
-
 	handle, params, _ := router.Lookup(http.MethodGet, "/user/gopher")
 	if handle == nil {
 		t.Fatal("Got no handle!")
@@ -505,9 +504,24 @@ func TestRouterLookup(t *testing.T) {
 			t.Fatal("Routing failed!")
 		}
 	}
-
 	if !reflect.DeepEqual(params, wantParams) {
 		t.Fatalf("Wrong parameter values: want %v, got %v", wantParams, params)
+	}
+	routed = false
+
+	// route without param
+	router.GET("/user", wantHandle)
+	handle, params, _ = router.Lookup(http.MethodGet, "/user")
+	if handle == nil {
+		t.Fatal("Got no handle!")
+	} else {
+		handle(nil, nil, nil)
+		if !routed {
+			t.Fatal("Routing failed!")
+		}
+	}
+	if params != nil {
+		t.Fatalf("Wrong parameter values: want %v, got %v", nil, params)
 	}
 
 	handle, _, tsr = router.Lookup(http.MethodGet, "/user/gopher/")
