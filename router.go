@@ -429,10 +429,11 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 			return
 		} else if req.Method != http.MethodConnect && path != "/" {
-			code := 301 // Moved Permanently, request with GET method
+			// Moved Permanently, request with GET method
+			code := http.StatusMovedPermanently
 			if req.Method != http.MethodGet {
 				// Permanent Redirect, request with same method
-				code = 308
+				code = http.StatusPermanentRedirect
 			}
 
 			if tsr && r.RedirectTrailingSlash {
