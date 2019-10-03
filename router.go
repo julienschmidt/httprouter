@@ -85,7 +85,7 @@ import (
 
 // Handle is a function that can be registered to a route to handle HTTP
 // requests. Like http.HandlerFunc, but has a third parameter for the values of
-// wildcards (variables).
+// wildcards (path variables).
 type Handle func(http.ResponseWriter, *http.Request, Params)
 
 // Param is a single URL parameter, consisting of a key and a value.
@@ -134,7 +134,7 @@ type Router struct {
 	// handler for the path with (without) the trailing slash exists.
 	// For example if /foo/ is requested but a route only exists for /foo, the
 	// client is redirected to /foo with http status code 301 for GET requests
-	// and 307 for all other request methods.
+	// and 308 for all other request methods.
 	RedirectTrailingSlash bool
 
 	// If enabled, the router tries to fix the current request path, if no
@@ -142,7 +142,7 @@ type Router struct {
 	// First superfluous path elements like ../ or // are removed.
 	// Afterwards the router does a case-insensitive lookup of the cleaned path.
 	// If a handle can be found for this route, the router makes a redirection
-	// to the corrected path with status code 301 for GET requests and 307 for
+	// to the corrected path with status code 301 for GET requests and 308 for
 	// all other request methods.
 	// For example /FOO and /..//Foo could be redirected to /foo.
 	// RedirectTrailingSlash is independent of this option.
@@ -429,11 +429,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 			return
 		} else if req.Method != http.MethodConnect && path != "/" {
-			code := 301 // Permanent redirect, request with GET method
+			code := 301 // Moved Permanently, request with GET method
 			if req.Method != http.MethodGet {
-				// Temporary redirect, request with same method
-				// As of Go 1.3, Go does not support status code 308.
-				code = 307
+				// Permanent Redirect, request with same method
+				code = 308
 			}
 
 			if tsr && r.RedirectTrailingSlash {
