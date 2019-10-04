@@ -258,8 +258,14 @@ func (r *Router) DELETE(path string, handle Handle) {
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
 func (r *Router) Handle(method, path string, handle Handle) {
+	if method == "" {
+		panic("method must not be empty")
+	}
 	if len(path) < 1 || path[0] != '/' {
 		panic("path must begin with '/' in path '" + path + "'")
+	}
+	if handle == nil {
+		panic("handle must not be nil")
 	}
 
 	if r.trees == nil {
