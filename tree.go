@@ -317,13 +317,13 @@ walk: // Outer loop for walking the tree
 		if len(path) > len(prefix) {
 			if path[:len(prefix)] == prefix {
 				path = path[len(prefix):]
+
 				// If this node does not have a wildcard (param or catchAll)
-				// child,  we can just look up the next child node and continue
+				// child, we can just look up the next child node and continue
 				// to walk down the tree
 				if !n.wildChild {
-					c := path[0]
 					indices := n.indices
-					for i, max := 0, len(indices); i < max; i++ {
+					for i, max, c := 0, len(indices), path[0]; i < max; i++ {
 						if c == indices[i] {
 							n = n.children[i]
 							prefix = n.path
@@ -417,6 +417,9 @@ walk: // Outer loop for walking the tree
 				return
 			}
 
+			// If there is no handle for this route, but this route has a
+			// wildcard child, there must be a handle for this path with an
+			// additional trailing slash
 			if path == "/" && n.wildChild && n.nType != root {
 				tsr = true
 				return
@@ -433,7 +436,6 @@ walk: // Outer loop for walking the tree
 					return
 				}
 			}
-
 			return
 		}
 
