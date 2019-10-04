@@ -17,6 +17,15 @@ func min(a, b int) int {
 	return b
 }
 
+func longestCommonPrefix(a, b string) int {
+	i := 0
+	max := min(len(a), len(b))
+	for i < max && a[i] == b[i] {
+		i++
+	}
+	return i
+}
+
 func countParams(path string) uint16 {
 	var n uint
 	for i := 0; i < len(path); i++ {
@@ -39,10 +48,10 @@ const (
 
 type node struct {
 	path      string
+	indices   string
 	wildChild bool
 	nType     nodeType
 	priority  uint32
-	indices   string
 	children  []*node
 	handle    Handle
 }
@@ -77,110 +86,107 @@ func (n *node) addRoute(path string, handle Handle) {
 	fullPath := path
 	n.priority++
 
-	// Non-empty tree
-	if len(n.path) > 0 || len(n.children) > 0 {
-	walk:
-		for {
-			// Find the longest common prefix.
-			// This also implies that the common prefix contains no ':' or '*'
-			// since the existing key can't contain those chars.
-			i := 0
-			max := min(len(path), len(n.path))
-			for i < max && path[i] == n.path[i] {
-				i++
-			}
-
-			// Split edge
-			if i < len(n.path) {
-				child := node{
-					path:      n.path[i:],
-					wildChild: n.wildChild,
-					nType:     static,
-					indices:   n.indices,
-					children:  n.children,
-					handle:    n.handle,
-					priority:  n.priority - 1,
-				}
-
-				n.children = []*node{&child}
-				// []byte for proper unicode char conversion, see #65
-				n.indices = string([]byte{n.path[i]})
-				n.path = path[:i]
-				n.handle = nil
-				n.wildChild = false
-			}
-
-			// Make new node a child of this node
-			if i < len(path) {
-				path = path[i:]
-
-				if n.wildChild {
-					n = n.children[0]
-					n.priority++
-
-					// Check if the wildcard matches
-					if len(path) >= len(n.path) && n.path == path[:len(n.path)] &&
-						// Adding a child to a catchAll is not possible
-						n.nType != catchAll &&
-						// Check for longer wildcard, e.g. :name and :names
-						(len(n.path) >= len(path) || path[len(n.path)] == '/') {
-						continue walk
-					} else {
-						// Wildcard conflict
-						pathSeg := path
-						if n.nType != catchAll {
-							pathSeg = strings.SplitN(pathSeg, "/", 2)[0]
-						}
-						prefix := fullPath[:strings.Index(fullPath, pathSeg)] + n.path
-						panic("'" + pathSeg +
-							"' in new path '" + fullPath +
-							"' conflicts with existing wildcard '" + n.path +
-							"' in existing prefix '" + prefix +
-							"'")
-					}
-				}
-
-				c := path[0]
-
-				// '/' after param
-				if n.nType == param && c == '/' && len(n.children) == 1 {
-					n = n.children[0]
-					n.priority++
-					continue walk
-				}
-
-				// Check if a child with the next path byte exists
-				for i, max := 0, len(n.indices); i < max; i++ {
-					if c == n.indices[i] {
-						i = n.incrementChildPrio(i)
-						n = n.children[i]
-						continue walk
-					}
-				}
-
-				// Otherwise insert it
-				if c != ':' && c != '*' {
-					// []byte for proper unicode char conversion, see #65
-					n.indices += string([]byte{c})
-					child := &node{}
-					n.children = append(n.children, child)
-					n.incrementChildPrio(len(n.indices) - 1)
-					n = child
-				}
-				n.insertChild(path, fullPath, handle)
-				return
-
-			} else if i == len(path) { // Make node a (in-path) leaf
-				if n.handle != nil {
-					panic("a handle is already registered for path '" + fullPath + "'")
-				}
-				n.handle = handle
-			}
-			return
-		}
-	} else { // Empty tree
+	// Empty tree
+	if len(n.path) == 0 && len(n.indices) == 0 {
 		n.insertChild(path, fullPath, handle)
 		n.nType = root
+		return
+	}
+
+walk:
+	for {
+		// Find the longest common prefix.
+		// This also implies that the common prefix contains no ':' or '*'
+		// since the existing key can't contain those chars.
+		i := longestCommonPrefix(path, n.path)
+
+		// Split edge
+		if i < len(n.path) {
+			child := node{
+				path:      n.path[i:],
+				wildChild: n.wildChild,
+				nType:     static,
+				indices:   n.indices,
+				children:  n.children,
+				handle:    n.handle,
+				priority:  n.priority - 1,
+			}
+
+			n.children = []*node{&child}
+			// []byte for proper unicode char conversion, see #65
+			n.indices = string([]byte{n.path[i]})
+			n.path = path[:i]
+			n.handle = nil
+			n.wildChild = false
+		}
+
+		// Make new node a child of this node
+		if i < len(path) {
+			path = path[i:]
+
+			if n.wildChild {
+				n = n.children[0]
+				n.priority++
+
+				// Check if the wildcard matches
+				if len(path) >= len(n.path) && n.path == path[:len(n.path)] &&
+					// Adding a child to a catchAll is not possible
+					n.nType != catchAll &&
+					// Check for longer wildcard, e.g. :name and :names
+					(len(n.path) >= len(path) || path[len(n.path)] == '/') {
+					continue walk
+				} else {
+					// Wildcard conflict
+					pathSeg := path
+					if n.nType != catchAll {
+						pathSeg = strings.SplitN(pathSeg, "/", 2)[0]
+					}
+					prefix := fullPath[:strings.Index(fullPath, pathSeg)] + n.path
+					panic("'" + pathSeg +
+						"' in new path '" + fullPath +
+						"' conflicts with existing wildcard '" + n.path +
+						"' in existing prefix '" + prefix +
+						"'")
+				}
+			}
+
+			c := path[0]
+
+			// '/' after param
+			if n.nType == param && c == '/' && len(n.children) == 1 {
+				n = n.children[0]
+				n.priority++
+				continue walk
+			}
+
+			// Check if a child with the next path byte exists
+			for i, max := 0, len(n.indices); i < max; i++ {
+				if c == n.indices[i] {
+					i = n.incrementChildPrio(i)
+					n = n.children[i]
+					continue walk
+				}
+			}
+
+			// Otherwise insert it
+			if c != ':' && c != '*' {
+				// []byte for proper unicode char conversion, see #65
+				n.indices += string([]byte{c})
+				child := &node{}
+				n.children = append(n.children, child)
+				n.incrementChildPrio(len(n.indices) - 1)
+				n = child
+			}
+			n.insertChild(path, fullPath, handle)
+			return
+
+		} else if i == len(path) { // Make node a (in-path) leaf
+			if n.handle != nil {
+				panic("a handle is already registered for path '" + fullPath + "'")
+			}
+			n.handle = handle
+		}
+		return
 	}
 }
 
