@@ -212,6 +212,40 @@ func TestRouterAPI(t *testing.T) {
 	}
 }
 
+func TestRouterInvalidInput(t *testing.T) {
+	router := New()
+
+	handle := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+
+	recv := catchPanic(func() {
+		router.Handle("", "/", handle)
+	})
+	if recv == nil {
+		t.Fatal("registering empty method did not panic")
+	}
+
+	recv = catchPanic(func() {
+		router.Handle(http.MethodGet, "", handle)
+	})
+	if recv == nil {
+		t.Fatal("registering empty path did not panic")
+	}
+
+	recv = catchPanic(func() {
+		router.Handle(http.MethodGet, "noSlashRoot", handle)
+	})
+	if recv == nil {
+		t.Fatal("registering path not beginning with '/' did not panic")
+	}
+
+	recv = catchPanic(func() {
+		router.Handle(http.MethodGet, "/", nil)
+	})
+	if recv == nil {
+		t.Fatal("registering nil handler did not panic")
+	}
+}
+
 func TestRouterInvalidWrap(t *testing.T) {
 	r := New()
 
@@ -238,40 +272,6 @@ func TestRouterInvalidWrap(t *testing.T) {
 	})
 	if recv != nil {
 		t.Errorf("panic when inserting without wrap func")
-	}
-}
-
-func TestRouterInvalidInput(t *testing.T) {
-	router := New()
-
-	handle := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
-
-	recv := catchPanic(func() {
-		router.Handle("", "/", handle)
-	})
-	if recv == nil {
-		t.Fatal("registering empty method did not panic")
-	}
-
-	recv = catchPanic(func() {
-		router.GET("", handle)
-	})
-	if recv == nil {
-		t.Fatal("registering empty path did not panic")
-	}
-
-	recv = catchPanic(func() {
-		router.GET("noSlashRoot", handle)
-	})
-	if recv == nil {
-		t.Fatal("registering path not beginning with '/' did not panic")
-	}
-
-	recv = catchPanic(func() {
-		router.GET("/", nil)
-	})
-	if recv == nil {
-		t.Fatal("registering nil handler did not panic")
 	}
 }
 
