@@ -167,22 +167,24 @@ func TestRouterAPI(t *testing.T) {
 func TestRouterInvalidInput(t *testing.T) {
 	router := New()
 
+	handle := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+
 	recv := catchPanic(func() {
-		router.Handle("", "/", nil)
+		router.Handle("", "/", handle)
 	})
 	if recv == nil {
 		t.Fatal("registering empty method did not panic")
 	}
 
 	recv = catchPanic(func() {
-		router.Handle("", "", nil)
+		router.GET("", handle)
 	})
 	if recv == nil {
 		t.Fatal("registering empty path did not panic")
 	}
 
 	recv = catchPanic(func() {
-		router.GET("noSlashRoot", nil)
+		router.GET("noSlashRoot", handle)
 	})
 	if recv == nil {
 		t.Fatal("registering path not beginning with '/' did not panic")
