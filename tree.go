@@ -179,12 +179,13 @@ walk:
 			}
 			n.insertChild(path, fullPath, handle)
 			return
-		} else if i == len(path) { // Make node a (in-path) leaf
-			if n.handle != nil {
-				panic("a handle is already registered for path '" + fullPath + "'")
-			}
-			n.handle = handle
 		}
+
+		// Otherwise add handle to current node
+		if n.handle != nil {
+			panic("a handle is already registered for path '" + fullPath + "'")
+		}
+		n.handle = handle
 		return
 	}
 }
