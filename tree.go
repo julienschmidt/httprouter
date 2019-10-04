@@ -452,13 +452,14 @@ walk: // Outer loop for walking the tree
 // It can optionally also fix trailing slashes.
 // It returns the case-corrected path and a bool indicating whether the lookup
 // was successful.
-func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (ciPath []byte, found bool) {
-	return n.findCaseInsensitivePathRec(
+func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (fixedPath string, found bool) {
+	ciPath := n.findCaseInsensitivePathRec(
 		path,
 		make([]byte, 0, len(path)+1), // Preallocate enough memory for new path
 		[4]byte{},                    // Empty rune buffer
 		fixTrailingSlash,
 	)
+	return string(ciPath), ciPath != nil
 }
 
 // Shift bytes in array by n bytes left
@@ -478,7 +479,7 @@ func shiftNRuneBytes(rb [4]byte, n int) [4]byte {
 }
 
 // Recursive case-insensitive lookup function used by n.findCaseInsensitivePath
-func (n *node) findCaseInsensitivePathRec(path string, ciPath []byte, rb [4]byte, fixTrailingSlash bool) ([]byte, bool) {
+func (n *node) findCaseInsensitivePathRec(path string, ciPath []byte, rb [4]byte, fixTrailingSlash bool) []byte {
 	npLen := len(n.path)
 
 walk: // Outer loop for walking the tree
@@ -536,10 +537,10 @@ walk: // Outer loop for walking the tree
 							// must use a recursive approach since both the
 							// uppercase byte and the lowercase byte might exist
 							// as an index
-							if out, found := n.children[i].findCaseInsensitivePathRec(
+							if out := n.children[i].findCaseInsensitivePathRec(
 								path, ciPath, rb, fixTrailingSlash,
-							); found {
-								return out, true
+							); out != nil {
+								return out
 							}
 							break
 						}
@@ -565,7 +566,10 @@ walk: // Outer loop for walking the tree
 
 				// Nothing found. We can recommend to redirect to the same URL
 				// without a trailing slash if a leaf exists for that path
-				return ciPath, (fixTrailingSlash && path == "/" && n.handle != nil)
+				if fixTrailingSlash && path == "/" && n.handle != nil {
+					return ciPath
+				}
+				return nil
 			}
 
 			n = n.children[0]
@@ -592,25 +596,25 @@ walk: // Outer loop for walking the tree
 
 					// ... but we can't
 					if fixTrailingSlash && len(path) == end+1 {
-						return ciPath, true
+						return ciPath
 					}
-					return ciPath, false
+					return nil
 				}
 
 				if n.handle != nil {
-					return ciPath, true
+					return ciPath
 				} else if fixTrailingSlash && len(n.children) == 1 {
 					// No handle found. Check if a handle for this path + a
 					// trailing slash exists
 					n = n.children[0]
 					if n.path == "/" && n.handle != nil {
-						return append(ciPath, '/'), true
+						return append(ciPath, '/')
 					}
 				}
-				return ciPath, false
+				return nil
 
 			case catchAll:
-				return append(ciPath, path...), true
+				return append(ciPath, path...)
 
 			default:
 				panic("invalid node type")
@@ -619,7 +623,7 @@ walk: // Outer loop for walking the tree
 			// We should have reached the node containing the handle.
 			// Check if this node has a handle registered.
 			if n.handle != nil {
-				return ciPath, true
+				return ciPath
 			}
 
 			// No handle found.
@@ -631,13 +635,13 @@ walk: // Outer loop for walking the tree
 						n = n.children[i]
 						if (len(n.path) == 1 && n.handle != nil) ||
 							(n.nType == catchAll && n.children[0].handle != nil) {
-							return append(ciPath, '/'), true
+							return append(ciPath, '/')
 						}
-						return ciPath, false
+						return nil
 					}
 				}
 			}
-			return ciPath, false
+			return nil
 		}
 	}
 
@@ -645,12 +649,12 @@ walk: // Outer loop for walking the tree
 	// Try to fix the path by adding / removing a trailing slash
 	if fixTrailingSlash {
 		if path == "/" {
-			return ciPath, true
+			return ciPath
 		}
 		if len(path)+1 == npLen && n.path[len(path)] == '/' &&
 			strings.EqualFold(path[1:], n.path[1:len(path)]) && n.handle != nil {
-			return append(ciPath, n.path...), true
+			return append(ciPath, n.path...)
 		}
 	}
-	return ciPath, false
+	return nil
 }

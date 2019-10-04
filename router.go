@@ -453,7 +453,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					r.RedirectTrailingSlash,
 				)
 				if found {
-					req.URL.Path = string(fixedPath)
+					req.URL.Path = fixedPath
 					http.Redirect(w, req, req.URL.String(), code)
 					return
 				}
