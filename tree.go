@@ -53,7 +53,7 @@ func findWildcard(path string) (wilcard string, i int, valid bool) {
 
 func countParams(path string) uint16 {
 	var n uint
-	for i := 0; i < len(path); i++ {
+	for i := range []byte(path) {
 		switch path[i] {
 		case ':', '*':
 			n++
@@ -175,18 +175,18 @@ walk:
 				}
 			}
 
-			c := path[0]
+			idxc := path[0]
 
 			// '/' after param
-			if n.nType == param && c == '/' && len(n.children) == 1 {
+			if n.nType == param && idxc == '/' && len(n.children) == 1 {
 				n = n.children[0]
 				n.priority++
 				continue walk
 			}
 
 			// Check if a child with the next path byte exists
-			for i, max := 0, len(n.indices); i < max; i++ {
-				if c == n.indices[i] {
+			for i, c := range []byte(n.indices) {
+				if c == idxc {
 					i = n.incrementChildPrio(i)
 					n = n.children[i]
 					continue walk
@@ -194,9 +194,9 @@ walk:
 			}
 
 			// Otherwise insert it
-			if c != ':' && c != '*' {
+			if idxc != ':' && idxc != '*' {
 				// []byte for proper unicode char conversion, see #65
-				n.indices += string([]byte{c})
+				n.indices += string([]byte{idxc})
 				child := &node{}
 				n.children = append(n.children, child)
 				n.incrementChildPrio(len(n.indices) - 1)
@@ -335,9 +335,9 @@ walk: // Outer loop for walking the tree
 				// child, we can just look up the next child node and continue
 				// to walk down the tree
 				if !n.wildChild {
-					indices := n.indices
-					for i, max, c := 0, len(indices), path[0]; i < max; i++ {
-						if c == indices[i] {
+					idxc := path[0]
+					for i, c := range []byte(n.indices) {
+						if c == idxc {
 							n = n.children[i]
 							prefix = n.path
 							continue walk
@@ -440,9 +440,8 @@ walk: // Outer loop for walking the tree
 
 			// No handle found. Check if a handle for this path + a
 			// trailing slash exists for trailing slash recommendation
-			indices := n.indices
-			for i, max := 0, len(indices); i < max; i++ {
-				if indices[i] == '/' {
+			for i, c := range []byte(n.indices) {
+				if c == '/' {
 					n = n.children[i]
 					tsr = (len(n.path) == 1 && n.handle != nil) ||
 						(n.nType == catchAll && n.children[0].handle != nil)
@@ -512,8 +511,9 @@ walk: // Outer loop for walking the tree
 
 				if rb[0] != 0 {
 					// Old rune not finished
-					for i, max := 0, len(n.indices); i < max; i++ {
-						if n.indices[i] == rb[0] {
+					idxc := rb[0]
+					for i, c := range []byte(n.indices) {
+						if c == idxc {
 							// continue with child node
 							n = n.children[i]
 							npLen = len(n.path)
@@ -543,10 +543,10 @@ walk: // Outer loop for walking the tree
 					// Skip already processed bytes
 					rb = shiftNRuneBytes(rb, off)
 
-					indices := n.indices
-					for i, max, c := 0, len(indices), rb[0]; i < max; i++ {
+					idxc := rb[0]
+					for i, c := range []byte(n.indices) {
 						// Lowercase matches
-						if indices[i] == c {
+						if c == idxc {
 							// must use a recursive approach since both the
 							// uppercase byte and the lowercase byte might exist
 							// as an index
@@ -565,9 +565,10 @@ walk: // Outer loop for walking the tree
 						utf8.EncodeRune(rb[:], up)
 						rb = shiftNRuneBytes(rb, off)
 
-						for i, max, c := 0, len(indices), rb[0]; i < max; i++ {
+						idxc := rb[0]
+						for i, c := range []byte(n.indices) {
 							// Uppercase matches
-							if indices[i] == c {
+							if c == idxc {
 								// Continue with child node
 								n = n.children[i]
 								npLen = len(n.path)
@@ -642,9 +643,8 @@ walk: // Outer loop for walking the tree
 			// No handle found.
 			// Try to fix the path by adding a trailing slash
 			if fixTrailingSlash {
-				indices := n.indices
-				for i, max := 0, len(indices); i < max; i++ {
-					if indices[i] == '/' {
+				for i, c := range []byte(n.indices) {
+					if c == '/' {
 						n = n.children[i]
 						if (len(n.path) == 1 && n.handle != nil) ||
 							(n.nType == catchAll && n.children[0].handle != nil) {
