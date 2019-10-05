@@ -39,14 +39,10 @@ type testRequests []struct {
 	ps         Params
 }
 
-func makeParams() *Params {
-	ps := make(Params, 0, 20)
-	return &ps
-}
-
 func saveParam(ps *Params, k, v string) *Params {
 	if ps == nil {
-		ps = makeParams()
+		paramsSlice := make(Params, 0, 20)
+		ps = &paramsSlice
 	}
 	i := len(*ps)
 	*ps = (*ps)[:i+1] // expand slice within preallocated capacity

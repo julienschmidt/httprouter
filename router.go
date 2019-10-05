@@ -202,15 +202,10 @@ func New() *Router {
 	}
 }
 
-func (r *Router) getParams() *Params {
-	ps := r.paramsPool.Get().(*Params)
-	*ps = (*ps)[0:0] // reset slice
-	return ps
-}
-
 func (r *Router) saveParam(ps *Params, k, v string) *Params {
 	if ps == nil {
-		ps = r.getParams()
+		ps = r.paramsPool.Get().(*Params)
+		*ps = (*ps)[0:0] // reset slice
 	}
 	i := len(*ps)
 	*ps = (*ps)[:i+1] // expand slice within preallocated capacity
