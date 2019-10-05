@@ -313,7 +313,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 		}
 	}
 
-	// If no wildcard was found, simple insert the path and handle
+	// If no wildcard was found, simply insert the path and handle
 	n.path = path
 	n.handle = handle
 }
