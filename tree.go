@@ -26,6 +26,31 @@ func longestCommonPrefix(a, b string) int {
 	return i
 }
 
+// Search for a wildcard segment and check the name for invalid characters.
+// Returns -1 as index, if no wildcard was found.
+func findWildcard(path string) (wilcard string, i int, valid bool) {
+	// Find start
+	for start, c := range []byte(path) {
+		// A wildcard starts with ':' (param) or '*' (catch-all)
+		if c != ':' && c != '*' {
+			continue
+		}
+
+		// Find end and check for invalid characters
+		valid = true
+		for end, c := range []byte(path[start+1:]) {
+			switch c {
+			case '/':
+				return path[start : start+1+end], start, valid
+			case ':', '*':
+				valid = false
+			}
+		}
+		return path[start:], start, valid
+	}
+	return "", -1, false
+}
+
 func countParams(path string) uint16 {
 	var n uint
 	for i := 0; i < len(path); i++ {
@@ -191,78 +216,65 @@ walk:
 }
 
 func (n *node) insertChild(path, fullPath string, handle Handle) {
-	var offset int // Already processed bytes of the path
-
-	// Find prefix until first wildcard (beginning with ':' or '*')
-	for i, max := 0, len(path); i < max; i++ {
-		c := path[i]
-		if c != ':' && c != '*' {
-			continue
-		}
-
-		// Find wildcard end (either '/' or path end) and check the name for
-		// invalid characters
-		end := i + 1
-		invalid := false
-		for end < max {
-			c := path[end]
-			if c == '/' {
-				break
-			}
-			if c == ':' || c == '*' {
-				invalid = true
-			}
-			end++
+	for {
+		// Find prefix until first wildcard
+		wildcard, i, valid := findWildcard(path)
+		if i < 0 { // No wilcard found
+			break
 		}
 
 		// The wildcard name must not contain ':' and '*'
-		if invalid {
+		if !valid {
 			panic("only one wildcard per path segment is allowed, has: '" +
-				path[i:end] + "' in path '" + fullPath + "'")
+				wildcard + "' in path '" + fullPath + "'")
 		}
 
 		// Check if the wildcard has a name
-		if end-i < 2 {
+		if len(wildcard) < 2 {
 			panic("wildcards must be named with a non-empty name in path '" + fullPath + "'")
 		}
 
 		// Check if this node has existing children which would be
 		// unreachable if we insert the wildcard here
 		if len(n.children) > 0 {
-			panic("wildcard route '" + path[i:end] +
+			panic("wildcard segment '" + wildcard +
 				"' conflicts with existing children in path '" + fullPath + "'")
 		}
 
-		if c == ':' { // param
-			// Split path at the beginning of the wildcard
+		if wildcard[0] == ':' { // param
 			if i > 0 {
-				n.path = path[offset:i]
-				offset = i
+				// Insert prefix before the current wildcard
+				n.path = path[:i]
+				path = path[i:]
 			}
 
+			n.wildChild = true
 			child := &node{
 				nType: param,
+				path:  wildcard,
 			}
 			n.children = []*node{child}
-			n.wildChild = true
 			n = child
 			n.priority++
 
 			// If the path doesn't end with the wildcard, then there
 			// will be another non-wildcard subpath starting with '/'
-			if end < max {
-				n.path = path[offset:end]
-				offset = end
-
+			if len(wildcard) < len(path) {
+				path = path[len(wildcard):]
 				child := &node{
 					priority: 1,
 				}
 				n.children = []*node{child}
 				n = child
+				continue
 			}
 
+			// Otherwise we're done. Insert the handle in the new leaf
+			n.handle = handle
+			return
+
 		} else { // catchAll
-			if end != max {
+			if i+len(wildcard) != len(path) {
 				panic("catch-all routes are only allowed at the end of the path in path '" + fullPath + "'")
 			}
 
@@ -276,7 +288,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 				panic("no / before catch-all in path '" + fullPath + "'")
 			}
 
-			n.path = path[offset:i]
+			n.path = path[:i]
 
 			// First node: catchAll node with empty path
 			child := &node{
@@ -284,7 +296,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 				nType:     catchAll,
 			}
 			n.children = []*node{child}
-			n.indices = string(path[i])
+			n.indices = string('/')
 			n = child
 			n.priority++
 
@@ -301,8 +313,8 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 		}
 	}
 
-	// Insert remaining path part and handle to the leaf
-	n.path = path[offset:]
+	// If no wildcard was found, simple insert the path and handle
+	n.path = path
 	n.handle = handle
 }
 
