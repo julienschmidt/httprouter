@@ -71,11 +71,6 @@ const (
 	catchAll
 )
 
-type handleWithFullPath struct {
-	handle   Handle
-	fullPath string
-}
-
 type node struct {
 	path      string
 	indices   string
