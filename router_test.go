@@ -610,6 +610,32 @@ func TestRouterParamsFromContext(t *testing.T) {
 	}
 }
 
+func TestRouterMatchedRouteFromContext(t *testing.T) {
+	routed := false
+
+	handlerFunc := func(_ http.ResponseWriter, req *http.Request) {
+		// get params from request context
+		route := MatchedRoutePathFromContext(req.Context())
+
+		if route != "/user/:name" {
+			t.Fatalf("Wrong matched route: want /user/:name, got %q", route)
+		}
+
+		routed = true
+	}
+
+	router := New()
+	router.SaveMatchedRoutePathToContext = true
+	router.HandlerFunc(http.MethodGet, "/user/:name", handlerFunc)
+
+	w := new(mockResponseWriter)
+	r, _ := http.NewRequest(http.MethodGet, "/user/gopher", nil)
+	router.ServeHTTP(w, r)
+	if !routed {
+		t.Fatal("Routing failed!")
+	}
+}
+
 type mockFileSystem struct {
 	opened bool
 }
