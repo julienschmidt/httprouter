@@ -71,6 +71,11 @@ const (
 	catchAll
 )
 
+type handleWithFullPath struct {
+	handle   Handle
+	fullPath string
+}
+
 type node struct {
 	path      string
 	indices   string
@@ -79,6 +84,7 @@ type node struct {
 	priority  uint32
 	children  []*node
 	handle    Handle
+	fullPath  string
 }
 
 // Increments priority of the given child and reorders if necessary
@@ -134,6 +140,7 @@ walk:
 				indices:   n.indices,
 				children:  n.children,
 				handle:    n.handle,
+				fullPath:  n.fullPath,
 				priority:  n.priority - 1,
 			}
 
@@ -210,7 +217,10 @@ walk:
 		if n.handle != nil {
 			panic("a handle is already registered for path '" + fullPath + "'")
 		}
+
 		n.handle = handle
+		n.fullPath = fullPath
+
 		return
 	}
 }
@@ -271,6 +281,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 
 			// Otherwise we're done. Insert the handle in the new leaf
 			n.handle = handle
+			n.fullPath = fullPath
 			return
 
 		} else { // catchAll
@@ -305,6 +316,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 				path:     path[i:],
 				nType:    catchAll,
 				handle:   handle,
+				fullPath: fullPath,
 				priority: 1,
 			}
 			n.children = []*node{child}
@@ -316,6 +328,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 	// If no wildcard was found, simple insert the path and handle
 	n.path = path
 	n.handle = handle
+	n.fullPath = fullPath
 }
 
 // Returns the handle registered with the given path (key). The values of
@@ -323,7 +336,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 // If no handle can be found, a TSR (trailing slash redirect) recommendation is
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
-func (n *node) getValue(path string, params func() *Params) (handle Handle, ps *Params, tsr bool) {
+func (n *node) getValue(path string, params func() *Params) (matchPath string, handle Handle, ps *Params, tsr bool) {
 walk: // Outer loop for walking the tree
 	for {
 		prefix := n.path
@@ -391,6 +404,7 @@ walk: // Outer loop for walking the tree
 					}
 
 					if handle = n.handle; handle != nil {
+						matchPath = n.fullPath
 						return
 					} else if len(n.children) == 1 {
 						// No handle found. Check if a handle for this path + a
@@ -416,6 +430,7 @@ walk: // Outer loop for walking the tree
 						}
 					}
 
+					matchPath = n.fullPath
 					handle = n.handle
 					return
 
@@ -427,6 +442,7 @@ walk: // Outer loop for walking the tree
 			// We should have reached the node containing the handle.
 			// Check if this node has a handle registered.
 			if handle = n.handle; handle != nil {
+				matchPath = n.fullPath
 				return
 			}
 

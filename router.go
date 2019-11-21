@@ -122,6 +122,17 @@ func ParamsFromContext(ctx context.Context) Params {
 	return p
 }
 
+type matchKey struct{}
+
+// MatchedRouteKey is the request context key under which the handler path match is stored.
+var MatchedRouteKey = matchKey{}
+
+// MatchedRouteFromContext retrieves the matched route path from the context.
+func MatchedRouteFromContext(ctx context.Context) string {
+	p, _ := ctx.Value(MatchedRouteKey).(string)
+	return p
+}
+
 // Router is a http.Handler which can be used to dispatch requests to different
 // handler functions via configurable routes
 type Router struct {
@@ -186,6 +197,10 @@ type Router struct {
 	// The handler can be used to keep your server from crashing because of
 	// unrecovered panics.
 	PanicHandler func(http.ResponseWriter, *http.Request, interface{})
+
+	// AddMatchedRouteToContext when enabled adds the matched router path onto
+	// the http.Request context before invoking the handler
+	AddMatchedRouteToContext bool
 }
 
 // Make sure the Router conforms with the http.Handler interface
@@ -354,7 +369,7 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 // the same path with an extra / without the trailing slash should be performed.
 func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
 	if root := r.trees[method]; root != nil {
-		handle, ps, tsr := root.getValue(path, r.getParams)
+		_, handle, ps, tsr := root.getValue(path, r.getParams)
 		if handle == nil {
 			r.putParams(ps)
 			return nil, nil, tsr
@@ -390,7 +405,7 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 				continue
 			}
 
-			handle, _, _ := r.trees[method].getValue(path, nil)
+			_, handle, _, _ := r.trees[method].getValue(path, nil)
 			if handle != nil {
 				// Add request method to list of allowed methods
 				allowed = append(allowed, method)
@@ -426,7 +441,11 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 
 	if root := r.trees[req.Method]; root != nil {
-		if handle, ps, tsr := root.getValue(path, r.getParams); handle != nil {
+		if match, handle, ps, tsr := root.getValue(path, r.getParams); handle != nil {
+			if r.AddMatchedRouteToContext {
+				req = req.WithContext(context.WithValue(req.Context(), MatchedRouteKey, match))
+			}
+
 			if ps != nil {
 				handle(w, req, *ps)
 				r.putParams(ps)
