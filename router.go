@@ -88,6 +88,11 @@ import (
 // wildcards (path variables).
 type Handle func(http.ResponseWriter, *http.Request, Params)
 
+// ServeHTTP calls function type of Handle.
+func (h Handle) ServeHTTP(w http.ResponseWriter, r *http.Request, ps Params){
+	h(w, r, ps)
+}
+
 // Param is a single URL parameter, consisting of a key and a value.
 type Param struct {
 	Key   string
