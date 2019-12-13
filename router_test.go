@@ -638,3 +638,33 @@ func TestRouterServeFiles(t *testing.T) {
 		t.Error("serving file failed")
 	}
 }
+
+func TestHandleWithMiddleware(t *testing.T) {
+	router := New()
+	testServer := httptest.NewServer(router)
+	defer testServer.Close()
+
+	isCalled := false
+	mockHandle := func(w http.ResponseWriter, r *http.Request, p Params) {
+		isCalled = true
+	}
+
+	middleware := func(h Handle) Handle {
+		return func(w http.ResponseWriter, r *http.Request, p Params) {
+			h.ServeHTTP(w, r, p)
+		}
+	}
+
+	router.Handle("GET", "/", middleware(mockHandle))
+
+	req, _ := http.NewRequest("GET", testServer.URL+"/", nil)
+	client := new(http.Client)
+	_, err := client.Do(req)
+	if err != nil {
+		t.Error("test request was failed")
+	}
+
+	if !isCalled {
+		t.Error("calling handle in middleware failed")
+	}
+}
