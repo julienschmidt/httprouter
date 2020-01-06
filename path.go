@@ -19,13 +19,18 @@ package httprouter
 //
 // If the result of this process is an empty string, "/" is returned
 func CleanPath(p string) string {
+	const stackBufSize = 128
+
 	// Turn empty string into "/"
 	if p == "" {
 		return "/"
 	}
 
+	// Reasonably sized buffer on stack to avoid allocations in the common case.
+	// If a larger buffer is required, it gets allocated dynamically.
+	buf := make([]byte, 0, stackBufSize)
+
 	n := len(p)
-	var buf []byte
 
 	// Invariants:
 	//      reading from path; r is index of next byte to process.
@@ -37,7 +42,12 @@ func CleanPath(p string) string {
 
 	if p[0] != '/' {
 		r = 0
-		buf = make([]byte, n+1)
+
+		if n+1 > stackBufSize {
+			buf = make([]byte, n+1)
+		} else {
+			buf = buf[:n+1]
+		}
 		buf[0] = '/'
 	}
 
@@ -69,7 +79,7 @@ func CleanPath(p string) string {
 				// can backtrack
 				w--
 
-				if buf == nil {
+				if len(buf) == 0 {
 					for w > 1 && p[w] != '/' {
 						w--
 					}
@@ -103,7 +113,7 @@ func CleanPath(p string) string {
 		w++
 	}
 
-	if buf == nil {
+	if len(buf) == 0 {
 		return p[:w]
 	}
 	return string(buf[:w])
@@ -111,12 +121,17 @@ func CleanPath(p string) string {
 
 // internal helper to lazily create a buffer if necessary
 func bufApp(buf *[]byte, s string, w int, c byte) {
-	if *buf == nil {
+	if len(*buf) == 0 {
 		if s[w] == c {
 			return
 		}
 
-		*buf = make([]byte, len(s))
+		if l := len(s); l > cap(*buf) {
+			*buf = make([]byte, len(s))
+		} else {
+			*buf = (*buf)[:l]
+		}
+
 		copy(*buf, s[:w])
 	}
 	(*buf)[w] = c
