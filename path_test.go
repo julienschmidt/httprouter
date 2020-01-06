@@ -6,7 +6,6 @@
 package httprouter
 
 import (
-	"runtime"
 	"testing"
 )
 
@@ -79,15 +78,19 @@ func TestPathCleanMallocs(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping malloc count in short mode")
 	}
-	if runtime.GOMAXPROCS(0) > 1 {
-		t.Log("skipping AllocsPerRun checks; GOMAXPROCS>1")
-		return
-	}
 
 	for _, test := range cleanTests {
 		allocs := testing.AllocsPerRun(100, func() { CleanPath(test.result) })
 		if allocs > 0 {
 			t.Errorf("CleanPath(%q): %v allocs, want zero", test.result, allocs)
+		}
+	}
+}
+
+func BenchmarkPathClean(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		for _, test := range cleanTests {
+			CleanPath(test.path)
 		}
 	}
 }
