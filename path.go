@@ -121,18 +121,20 @@ func CleanPath(p string) string {
 
 // internal helper to lazily create a buffer if necessary
 func bufApp(buf *[]byte, s string, w int, c byte) {
-	if len(*buf) == 0 {
+	b := *buf
+	if len(b) == 0 {
 		if s[w] == c {
 			return
 		}
 
-		if l := len(s); l > cap(*buf) {
+		if l := len(s); l > cap(b) {
 			*buf = make([]byte, len(s))
 		} else {
 			*buf = (*buf)[:l]
 		}
+		b = *buf
 
-		copy(*buf, s[:w])
+		copy(b, s[:w])
 	}
-	(*buf)[w] = c
+	b[w] = c
 }
