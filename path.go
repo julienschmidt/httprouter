@@ -19,17 +19,49 @@ package httprouter
 //
 // If the result of this process is an empty string, "/" is returned
 func CleanPath(p string) string {
-	const stackBufSize = 128
-
 	// Turn empty string into "/"
 	if p == "" {
 		return "/"
 	}
 
-	// Reasonably sized buffer on stack to avoid allocations in the common case.
-	// If a larger buffer is required, it gets allocated dynamically.
-	buf := make([]byte, 0, stackBufSize)
+	n := len(p)
 
+	// Depending of the length of the input p, call either a helper function
+	// providing an appropriately sized buffer on the stack, or allocate a
+	// buffer dynamically on the heap for very large inputs.
+	switch {
+	case n < 64:
+		return cleanPathStack64(p)
+	case n < 256:
+		return cleanPathStack256(p)
+	case n < 1024:
+		return cleanPathStack1024(p)
+	default:
+		return cleanPathDynamic(p)
+	}
+}
+
+func cleanPathStack64(p string) string {
+	buf := make([]byte, 0, 64)
+	return cleanPath(p, &buf)
+}
+
+func cleanPathStack256(p string) string {
+	buf := make([]byte, 0, 256)
+	return cleanPath(p, &buf)
+}
+
+func cleanPathStack1024(p string) string {
+	buf := make([]byte, 0, 1024)
+	return cleanPath(p, &buf)
+}
+
+func cleanPathDynamic(p string) string {
+	buf := make([]byte, 0, len(p)+1)
+	return cleanPath(p, &buf)
+}
+
+func cleanPath(p string, buf *[]byte) string {
 	n := len(p)
 
 	// Invariants:
@@ -42,13 +74,8 @@ func CleanPath(p string) string {
 
 	if p[0] != '/' {
 		r = 0
-
-		if n+1 > stackBufSize {
-			buf = make([]byte, n+1)
-		} else {
-			buf = buf[:n+1]
-		}
-		buf[0] = '/'
+		*buf = (*buf)[:n+1]
+		(*buf)[0] = '/'
 	}
 
 	trailing := n > 1 && p[n-1] == '/'
@@ -79,12 +106,12 @@ func CleanPath(p string) string {
 				// can backtrack
 				w--
 
-				if len(buf) == 0 {
+				if len(*buf) == 0 {
 					for w > 1 && p[w] != '/' {
 						w--
 					}
 				} else {
-					for w > 1 && buf[w] != '/' {
+					for w > 1 && (*buf)[w] != '/' {
 						w--
 					}
 				}
@@ -94,13 +121,13 @@ func CleanPath(p string) string {
 			// real path element.
 			// add slash if needed
 			if w > 1 {
-				bufApp(&buf, p, w, '/')
+				bufApp(buf, p, w, '/')
 				w++
 			}
 
 			// copy element
 			for r < n && p[r] != '/' {
-				bufApp(&buf, p, w, p[r])
+				bufApp(buf, p, w, p[r])
 				w++
 				r++
 			}
@@ -109,17 +136,16 @@ func CleanPath(p string) string {
 
 	// re-append trailing slash
 	if trailing && w > 1 {
-		bufApp(&buf, p, w, '/')
+		bufApp(buf, p, w, '/')
 		w++
 	}
 
-	if len(buf) == 0 {
+	if len(*buf) == 0 {
 		return p[:w]
 	}
-	return string(buf[:w])
+	return string((*buf)[:w])
 }
 
-// internal helper to lazily create a buffer if necessary
 func bufApp(buf *[]byte, s string, w int, c byte) {
 	b := *buf
 	if len(b) == 0 {
@@ -127,11 +153,7 @@ func bufApp(buf *[]byte, s string, w int, c byte) {
 			return
 		}
 
-		if l := len(s); l > cap(b) {
-			*buf = make([]byte, len(s))
-		} else {
-			*buf = (*buf)[:l]
-		}
+		*buf = (*buf)[:len(s)]
 		b = *buf
 
 		copy(b, s[:w])
