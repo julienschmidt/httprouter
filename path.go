@@ -5,6 +5,8 @@
 
 package httprouter
 
+const stackBufSize = 128
+
 // CleanPath is the URL version of path.Clean, it returns a canonical URL path
 // for p, eliminating . and .. elements.
 //
@@ -19,8 +21,6 @@ package httprouter
 //
 // If the result of this process is an empty string, "/" is returned
 func CleanPath(p string) string {
-	const stackBufSize = 128
-
 	// Turn empty string into "/"
 	if p == "" {
 		return "/"
