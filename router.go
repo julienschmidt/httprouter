@@ -88,7 +88,7 @@ import (
 // wildcards (path variables).
 type Handle func(http.ResponseWriter, *http.Request, Params)
 
-// ServeHTTP calls function type of Handle.
+// ServeHTTP calls h(w, r, ps)
 func (h Handle) ServeHTTP(w http.ResponseWriter, r *http.Request, ps Params) {
 	h(w, r, ps)
 }
