@@ -6,14 +6,17 @@ go:
   - 1.9.x
   - 1.10.x
   - 1.11.x
+  - 1.12.x
+  - 1.13.x
   - master
+matrix:
+  allow_failures:
+    - go: master
+  fast_finish: true
 before_install:
-  - go get golang.org/x/lint/golint
-  - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
 script:
   - go test -v -covermode=count -coverprofile=coverage.out
   - go vet ./...
   - test -z "$(gofmt -d -s . | tee /dev/stderr)"
-  - test -z "$(golint ./... | tee /dev/stderr)"
   - $HOME/gopath/bin/goveralls  -coverprofile=coverage.out -service=travis-ci
