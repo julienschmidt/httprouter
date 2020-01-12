@@ -122,22 +122,27 @@ func ParamsFromContext(ctx context.Context) Params {
 	return p
 }
 
-type matchKey struct{}
-
-// MatchedRoutePathKey is the request context key under which the handler path
+// MatchedRoutePathKey is the Param name under which the handler path
 // match is stored.
-var MatchedRoutePathKey = matchKey{}
+var MatchedRoutePathKey = "$matchedRoutePath"
 
-// MatchedRoutePathFromContext retrieves the matched route path from the context.
-func MatchedRoutePathFromContext(ctx context.Context) string {
-	p, _ := ctx.Value(MatchedRoutePathKey).(string)
-	return p
+// MatchedRoutePath retrieves the matched route path.
+func (ps Params) MatchedRoutePath() string {
+	return ps.ByName(MatchedRoutePathKey)
 }
 
-func saveMatchedRoutePathToContext(path string, handle Handle) Handle {
+func (r *Router) saveMatchedRoutePath(path string, handle Handle) Handle {
 	return func(w http.ResponseWriter, req *http.Request, ps Params) {
-		req = req.WithContext(context.WithValue(req.Context(), MatchedRoutePathKey, path))
-		handle(w, req, ps)
+		if ps == nil {
+			psp := r.getParams()
+			ps := (*psp)[0:1]
+			ps[0] = Param{Key: MatchedRoutePathKey, Value: path}
+			handle(w, req, ps)
+			r.putParams(psp)
+		} else {
+			ps = append(ps, Param{Key: MatchedRoutePathKey, Value: path})
+			handle(w, req, ps)
+		}
 	}
 }
 
@@ -153,7 +158,7 @@ type Router struct {
 	// onto the http.Request context before invoking the handler.
 	// The matched route path is only added to handlers of routes that were
 	// registered when this option was enabled.
-	SaveMatchedRoutePathToContext bool
+	SaveMatchedRoutePath bool
 
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
@@ -283,6 +288,8 @@ func (r *Router) DELETE(path string, handle Handle) {
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
 func (r *Router) Handle(method, path string, handle Handle) {
+	varsCount := uint16(0)
+
 	if method == "" {
 		panic("method must not be empty")
 	}
@@ -293,8 +300,9 @@ func (r *Router) Handle(method, path string, handle Handle) {
 		panic("handle must not be nil")
 	}
 
-	if r.SaveMatchedRoutePathToContext {
-		handle = saveMatchedRoutePathToContext(path, handle)
+	if r.SaveMatchedRoutePath {
+		handle = r.saveMatchedRoutePath(path, handle)
+		varsCount++
 	}
 
 	if r.trees == nil {
@@ -312,8 +320,8 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	root.addRoute(path, handle)
 
 	// Update maxParams
-	if pc := countParams(path); pc > r.maxParams {
-		r.maxParams = pc
+	if paramsCount := countParams(path); paramsCount+varsCount > r.maxParams {
+		r.maxParams = paramsCount + varsCount
 	}
 
 	// Lazy-init paramsPool alloc func
