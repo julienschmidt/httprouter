@@ -150,7 +150,9 @@ type Router struct {
 	maxParams  uint16
 
 	// SaveMatchedRoutePathToContext when enabled adds the matched route path
-	// onto the http.Request context before invoking the handler
+	// onto the http.Request context before invoking the handler.
+	// The matched route path is only added to handlers of routes that were
+	// registered when this option was enabled.
 	SaveMatchedRoutePathToContext bool
 
 	// Enables automatic redirection if the current route can't be matched but a
