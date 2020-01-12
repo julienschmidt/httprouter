@@ -122,6 +122,25 @@ func ParamsFromContext(ctx context.Context) Params {
 	return p
 }
 
+type matchKey struct{}
+
+// MatchedRoutePathKey is the request context key under which the handler path
+// match is stored.
+var MatchedRoutePathKey = matchKey{}
+
+// MatchedRoutePathFromContext retrieves the matched route path from the context.
+func MatchedRoutePathFromContext(ctx context.Context) string {
+	p, _ := ctx.Value(MatchedRoutePathKey).(string)
+	return p
+}
+
+func saveMatchedRoutePathToContext(path string, handle Handle) Handle {
+	return func(w http.ResponseWriter, req *http.Request, ps Params) {
+		req = req.WithContext(context.WithValue(req.Context(), MatchedRoutePathKey, path))
+		handle(w, req, ps)
+	}
+}
+
 // Router is a http.Handler which can be used to dispatch requests to different
 // handler functions via configurable routes
 type Router struct {
@@ -129,6 +148,10 @@ type Router struct {
 
 	paramsPool sync.Pool
 	maxParams  uint16
+
+	// SaveMatchedRoutePathToContext when enabled adds the matched route path
+	// onto the http.Request context before invoking the handler
+	SaveMatchedRoutePathToContext bool
 
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
@@ -266,6 +289,10 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	}
 	if handle == nil {
 		panic("handle must not be nil")
+	}
+
+	if r.SaveMatchedRoutePathToContext {
+		handle = saveMatchedRoutePathToContext(path, handle)
 	}
 
 	if r.trees == nil {
