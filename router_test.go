@@ -610,28 +610,43 @@ func TestRouterParamsFromContext(t *testing.T) {
 	}
 }
 
-func TestRouterMatchedRouteFromContext(t *testing.T) {
-	routed := false
-
-	handlerFunc := func(_ http.ResponseWriter, req *http.Request) {
+func TestRouterMatchedRoutePathFromContext(t *testing.T) {
+	routed1 := false
+	handlerFunc1 := func(_ http.ResponseWriter, req *http.Request) {
 		// get params from request context
 		route := MatchedRoutePathFromContext(req.Context())
-
 		if route != "/user/:name" {
 			t.Fatalf("Wrong matched route: want /user/:name, got %q", route)
 		}
+		routed1 = true
+	}
 
-		routed = true
+	routed2 := false
+	handlerFunc2 := func(_ http.ResponseWriter, req *http.Request) {
+		// get params from request context
+		route := MatchedRoutePathFromContext(req.Context())
+		if route != "/user/:name/details" {
+			t.Fatalf("Wrong matched route: want /user/:name/details, got %q", route)
+		}
+		routed2 = true
 	}
 
 	router := New()
 	router.SaveMatchedRoutePathToContext = true
-	router.HandlerFunc(http.MethodGet, "/user/:name", handlerFunc)
+	router.HandlerFunc(http.MethodGet, "/user/:name", handlerFunc1)
+	router.HandlerFunc(http.MethodGet, "/user/:name/details", handlerFunc2)
 
 	w := new(mockResponseWriter)
 	r, _ := http.NewRequest(http.MethodGet, "/user/gopher", nil)
 	router.ServeHTTP(w, r)
-	if !routed {
+	if !routed1 || routed2 {
+		t.Fatal("Routing failed!")
+	}
+
+	w = new(mockResponseWriter)
+	r, _ = http.NewRequest(http.MethodGet, "/user/gopher/details", nil)
+	router.ServeHTTP(w, r)
+	if !routed2 {
 		t.Fatal("Routing failed!")
 	}
 }
