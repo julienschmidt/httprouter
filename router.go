@@ -34,7 +34,7 @@
 // The router matches incoming requests by the request method and the path.
 // If a handle is registered for this path and method, the router delegates the
 // request to that function.
-// For the methods GET, POST, PUT, PATCH and DELETE shortcut functions exist to
+// For the methods GET, POST, PUT, PATCH, DELETE and OPTIONS shortcut functions exist to
 // register handles, for all other methods router.Handle can be used.
 //
 // The registered path, against which the router matches incoming requests, can
