@@ -1,3 +1,5 @@
+// +build purego
+
 package httprouter
 
 import (
@@ -55,14 +57,14 @@ func RandStringBytesMaskImprSrc(n int) string {
 	return string(b)
 }
 
-//func TestStringToBytes(t *testing.T) {
-//	for i := 0; i < 100; i++ {
-//		s := RandStringBytesMaskImprSrc(64)
-//		if !bytes.Equal(rawStrToBytes(s), stringToBytes(s)) {
-//			t.Fatal("don't match")
-//		}
-//	}
-//}
+func TestStringToBytes(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		s := RandStringBytesMaskImprSrc(64)
+		if !bytes.Equal(rawStrToBytes(s), stringToBytes(s)) {
+			t.Fatal("don't match")
+		}
+	}
+}
 
 // go test -v -run=none -bench=^BenchmarkBytesConv -benchmem=true
 
@@ -84,8 +86,8 @@ func BenchmarkBytesConvStrToBytesRaw(b *testing.B) {
 	}
 }
 
-//func BenchmarkBytesConvStrToBytes(b *testing.B) {
-//	for i := 0; i < b.N; i++ {
-//		stringToBytes(testString)
-//	}
-//}
+func BenchmarkBytesConvStrToBytes(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		stringToBytes(testString)
+	}
+}
