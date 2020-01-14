@@ -139,7 +139,7 @@ walk:
 
 			n.children = []*node{&child}
 			// []byte for proper unicode char conversion, see #65
-			n.indices = string([]byte{n.path[i]})
+			n.indices = bytesToString([]byte{n.path[i]})
 			n.path = path[:i]
 			n.handle = nil
 			n.wildChild = false
@@ -196,7 +196,7 @@ walk:
 			// Otherwise insert it
 			if idxc != ':' && idxc != '*' {
 				// []byte for proper unicode char conversion, see #65
-				n.indices += string([]byte{idxc})
+				n.indices += bytesToString([]byte{idxc})
 				child := &node{}
 				n.children = append(n.children, child)
 				n.incrementChildPrio(len(n.indices) - 1)
@@ -479,7 +479,7 @@ func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (fixe
 		fixTrailingSlash,
 	)
 
-	return string(ciPath), ciPath != nil
+	return bytesToString(ciPath), ciPath != nil
 }
 
 // Shift bytes in array by n bytes left
