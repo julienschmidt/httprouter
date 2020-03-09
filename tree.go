@@ -483,19 +483,17 @@ func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (fixe
 }
 
 // Shift bytes in array by n bytes left
-func shiftNRuneBytes(rb [4]byte, n int) [4]byte {
-	switch n {
-	case 0:
+func shiftNRuneBytes(rb [4]byte, n int) (res [4]byte) {
+	if n == 0 {
 		return rb
-	case 1:
-		return [4]byte{rb[1], rb[2], rb[3], 0}
-	case 2:
-		return [4]byte{rb[2], rb[3]}
-	case 3:
-		return [4]byte{rb[3]}
-	default:
-		return [4]byte{}
+	} else if n == 1 {
+		res[0], res[1], res[2] = rb[1], rb[2], rb[3]
+	} else if n == 2 {
+		res[0], res[1] = rb[2], rb[3]
+	} else if n == 3 {
+		res[0] = rb[3]
 	}
+	return
 }
 
 // Recursive case-insensitive lookup function used by n.findCaseInsensitivePath
