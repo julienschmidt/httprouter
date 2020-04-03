@@ -34,7 +34,7 @@
 // The router matches incoming requests by the request method and the path.
 // If a handle is registered for this path and method, the router delegates the
 // request to that function.
-// For the methods GET, POST, PUT, PATCH and DELETE shortcut functions exist to
+// For the methods GET, POST, PUT, PATCH, DELETE and OPTIONS shortcut functions exist to
 // register handles, for all other methods router.Handle can be used.
 //
 // The registered path, against which the router matches incoming requests, can
@@ -102,9 +102,9 @@ type Params []Param
 // ByName returns the value of the first Param which key matches the given name.
 // If no matching Param is found, an empty string is returned.
 func (ps Params) ByName(name string) string {
-	for i := range ps {
-		if ps[i].Key == name {
-			return ps[i].Value
+	for _, p := range ps {
+		if p.Key == name {
+			return p.Value
 		}
 	}
 	return ""
@@ -122,6 +122,17 @@ func ParamsFromContext(ctx context.Context) Params {
 	return p
 }
 
+// MatchedRoutePathParam is the Param name under which the path of the matched
+// route is stored, if Router.SaveMatchedRoutePath is set.
+var MatchedRoutePathParam = "$matchedRoutePath"
+
+// MatchedRoutePath retrieves the path of the matched route.
+// Router.SaveMatchedRoutePath must have been enabled when the respective
+// handler was added, otherwise this function always returns an empty string.
+func (ps Params) MatchedRoutePath() string {
+	return ps.ByName(MatchedRoutePathParam)
+}
+
 // Router is a http.Handler which can be used to dispatch requests to different
 // handler functions via configurable routes
 type Router struct {
@@ -129,6 +140,12 @@ type Router struct {
 
 	paramsPool sync.Pool
 	maxParams  uint16
+
+	// If enabled, adds the matched route path onto the http.Request context
+	// before invoking the handler.
+	// The matched route path is only added to handlers of routes that were
+	// registered when this option was enabled.
+	SaveMatchedRoutePath bool
 
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
@@ -214,6 +231,21 @@ func (r *Router) putParams(ps *Params) {
 	}
 }
 
+func (r *Router) saveMatchedRoutePath(path string, handle Handle) Handle {
+	return func(w http.ResponseWriter, req *http.Request, ps Params) {
+		if ps == nil {
+			psp := r.getParams()
+			ps := (*psp)[0:1]
+			ps[0] = Param{Key: MatchedRoutePathParam, Value: path}
+			handle(w, req, ps)
+			r.putParams(psp)
+		} else {
+			ps = append(ps, Param{Key: MatchedRoutePathParam, Value: path})
+			handle(w, req, ps)
+		}
+	}
+}
+
 // GET is a shortcut for router.Handle(http.MethodGet, path, handle)
 func (r *Router) GET(path string, handle Handle) {
 	r.Handle(http.MethodGet, path, handle)
@@ -258,6 +290,8 @@ func (r *Router) DELETE(path string, handle Handle) {
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
 func (r *Router) Handle(method, path string, handle Handle) {
+	varsCount := uint16(0)
+
 	if method == "" {
 		panic("method must not be empty")
 	}
@@ -266,6 +300,11 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	}
 	if handle == nil {
 		panic("handle must not be nil")
+	}
+
+	if r.SaveMatchedRoutePath {
+		varsCount++
+		handle = r.saveMatchedRoutePath(path, handle)
 	}
 
 	if r.trees == nil {
@@ -283,8 +322,8 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	root.addRoute(path, handle)
 
 	// Update maxParams
-	if pc := countParams(path); pc > r.maxParams {
-		r.maxParams = pc
+	if paramsCount := countParams(path); paramsCount+varsCount > r.maxParams {
+		r.maxParams = paramsCount + varsCount
 	}
 
 	// Lazy-init paramsPool alloc func

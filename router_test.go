@@ -610,6 +610,65 @@ func TestRouterParamsFromContext(t *testing.T) {
 	}
 }
 
+func TestRouterMatchedRoutePath(t *testing.T) {
+	route1 := "/user/:name"
+	routed1 := false
+	handle1 := func(_ http.ResponseWriter, req *http.Request, ps Params) {
+		route := ps.MatchedRoutePath()
+		if route != route1 {
+			t.Fatalf("Wrong matched route: want %s, got %s", route1, route)
+		}
+		routed1 = true
+	}
+
+	route2 := "/user/:name/details"
+	routed2 := false
+	handle2 := func(_ http.ResponseWriter, req *http.Request, ps Params) {
+		route := ps.MatchedRoutePath()
+		if route != route2 {
+			t.Fatalf("Wrong matched route: want %s, got %s", route2, route)
+		}
+		routed2 = true
+	}
+
+	route3 := "/"
+	routed3 := false
+	handle3 := func(_ http.ResponseWriter, req *http.Request, ps Params) {
+		route := ps.MatchedRoutePath()
+		if route != route3 {
+			t.Fatalf("Wrong matched route: want %s, got %s", route3, route)
+		}
+		routed3 = true
+	}
+
+	router := New()
+	router.SaveMatchedRoutePath = true
+	router.Handle(http.MethodGet, route1, handle1)
+	router.Handle(http.MethodGet, route2, handle2)
+	router.Handle(http.MethodGet, route3, handle3)
+
+	w := new(mockResponseWriter)
+	r, _ := http.NewRequest(http.MethodGet, "/user/gopher", nil)
+	router.ServeHTTP(w, r)
+	if !routed1 || routed2 || routed3 {
+		t.Fatal("Routing failed!")
+	}
+
+	w = new(mockResponseWriter)
+	r, _ = http.NewRequest(http.MethodGet, "/user/gopher/details", nil)
+	router.ServeHTTP(w, r)
+	if !routed2 || routed3 {
+		t.Fatal("Routing failed!")
+	}
+
+	w = new(mockResponseWriter)
+	r, _ = http.NewRequest(http.MethodGet, "/", nil)
+	router.ServeHTTP(w, r)
+	if !routed3 {
+		t.Fatal("Routing failed!")
+	}
+}
+
 type mockFileSystem struct {
 	opened bool
 }

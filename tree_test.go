@@ -474,6 +474,9 @@ func TestTreeRootTrailingSlashRedirect(t *testing.T) {
 func TestTreeFindCaseInsensitivePath(t *testing.T) {
 	tree := &node{}
 
+	longPath := "/l" + strings.Repeat("o", 128) + "ng"
+	lOngPath := "/l" + strings.Repeat("O", 128) + "ng/"
+
 	routes := [...]string{
 		"/hi",
 		"/b/",
@@ -507,6 +510,7 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		"/w/♭/", // 3 byte, last byte differs
 		"/w/𠜎",  // 4 byte
 		"/w/𠜏/", // 4 byte
+		longPath,
 	}
 
 	for _, route := range routes {
@@ -599,6 +603,7 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		{"/w/♭", "/w/♭/", true, true},
 		{"/w/𠜎/", "/w/𠜎", true, true},
 		{"/w/𠜏", "/w/𠜏/", true, true},
+		{lOngPath, longPath, true, true},
 	}
 	// With fixTrailingSlash = true
 	for _, test := range tests {

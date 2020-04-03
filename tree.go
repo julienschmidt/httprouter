@@ -339,7 +339,6 @@ walk: // Outer loop for walking the tree
 					for i, c := range []byte(n.indices) {
 						if c == idxc {
 							n = n.children[i]
-							prefix = n.path
 							continue walk
 						}
 					}
@@ -381,7 +380,6 @@ walk: // Outer loop for walking the tree
 						if len(n.children) > 0 {
 							path = path[end:]
 							n = n.children[0]
-							prefix = n.path
 							continue walk
 						}
 
@@ -465,12 +463,22 @@ walk: // Outer loop for walking the tree
 // It returns the case-corrected path and a bool indicating whether the lookup
 // was successful.
 func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (fixedPath string, found bool) {
+	const stackBufSize = 128
+
+	// Use a static sized buffer on the stack in the common case.
+	// If the path is too long, allocate a buffer on the heap instead.
+	buf := make([]byte, 0, stackBufSize)
+	if l := len(path) + 1; l > stackBufSize {
+		buf = make([]byte, 0, l)
+	}
+
 	ciPath := n.findCaseInsensitivePathRec(
 		path,
-		make([]byte, 0, len(path)+1), // Preallocate enough memory for new path
-		[4]byte{},                    // Empty rune buffer
+		buf,       // Preallocate enough memory for new path
+		[4]byte{}, // Empty rune buffer
 		fixTrailingSlash,
 	)
+
 	return string(ciPath), ciPath != nil
 }
 
