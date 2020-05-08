@@ -670,6 +670,7 @@ func TestTreeWildcardConflictEx(t *testing.T) {
 		{"/who/are/foo/bar", "/foo/bar", `/who/are/\*you`, `/\*you`},
 		{"/conxxx", "xxx", `/con:tact`, `:tact`},
 		{"/conooo/xxx", "ooo", `/con:tact`, `:tact`},
+		{"/whose/:users/:user", ":user", `/whose/:users/:name`, `:name`},
 	}
 
 	for _, conflict := range conflicts {
@@ -681,6 +682,7 @@ func TestTreeWildcardConflictEx(t *testing.T) {
 			"/con:tact",
 			"/who/are/*you",
 			"/who/foo/hello",
+			"/whose/:users/:name",
 		}
 
 		for _, route := range routes {
