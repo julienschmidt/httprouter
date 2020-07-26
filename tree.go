@@ -92,7 +92,6 @@ func (n *node) incrementChildPrio(pos int) int {
 	for ; newPos > 0 && cs[newPos-1].priority < prio; newPos-- {
 		// Swap node positions
 		cs[newPos-1], cs[newPos] = cs[newPos], cs[newPos-1]
-
 	}
 
 	// Build new index char string
@@ -112,7 +111,7 @@ func (n *node) addRoute(path string, handle Handle) {
 	n.priority++
 
 	// Empty tree
-	if len(n.path) == 0 && len(n.indices) == 0 {
+	if n.path == "" && n.indices == "" {
 		n.insertChild(path, fullPath, handle)
 		n.nType = root
 		return
@@ -348,7 +347,6 @@ walk: // Outer loop for walking the tree
 					// trailing slash if a leaf exists for that path.
 					tsr = (path == "/" && n.handle != nil)
 					return
-
 				}
 
 				// Handle wildcard child
