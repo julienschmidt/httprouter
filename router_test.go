@@ -617,7 +617,7 @@ func TestRequestParam(t *testing.T) {
 	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/user/gopher", nil)
 
 	if p := RequestParam(r, "name"); p != "gopher" {
-		t.Fatalf("Wrong parameter values: want 'gopher', got %s", p)
+		t.Fatalf("Wrong parameter values: want gopher, got %s", p)
 	}
 }
 
