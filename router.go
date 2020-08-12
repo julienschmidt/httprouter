@@ -79,6 +79,7 @@ package httprouter
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -108,6 +109,45 @@ func (ps Params) ByName(name string) string {
 		}
 	}
 	return ""
+}
+
+// GetExt returns the value split at the last extension available, for example:
+//	if :filename == "report.json", GetExt("filename") returns "report", "json"
+func (ps Params) GetExt(name string) (val, ext string) {
+	val = ps.ByName(name)
+	for i := len(val) - 1; i > -1; i-- {
+		if val[i] == '.' {
+			return val[:i], val[i+1:]
+		}
+	}
+	return
+}
+
+func (ps Params) Float(name string) float64 {
+	v, _ := strconv.ParseFloat(ps.ByName(name), 64)
+	return v
+}
+
+func (ps Params) Int(name string) int64 {
+	v, _ := strconv.ParseInt(ps.ByName(name), 10, 64)
+	return v
+}
+
+func (ps Params) Uint(name string) uint64 {
+	v, _ := strconv.ParseUint(ps.ByName(name), 10, 64)
+	return v
+}
+
+func (ps Params) Bool(name string) bool {
+	v, _ := strconv.ParseBool(ps.ByName(name))
+	return v
+}
+
+// Clone returns a copy of ps, required if you want to store it somewhere or use it outside of your handler.
+func (ps Params) Clone() Params {
+	cp := make(Params, len(ps))
+	copy(cp, ps)
+	return cp
 }
 
 type paramsKey struct{}
@@ -221,12 +261,12 @@ func New() *Router {
 
 func (r *Router) getParams() *Params {
 	ps := r.paramsPool.Get().(*Params)
-	*ps = (*ps)[0:0] // reset slice
 	return ps
 }
 
 func (r *Router) putParams(ps *Params) {
 	if ps != nil {
+		*ps = (*ps)[0:0] // reset slice
 		r.paramsPool.Put(ps)
 	}
 }
@@ -411,16 +451,16 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 
 	if path == "*" { // server-wide
 		// empty method is used for internal calls to refresh the cache
-		if reqMethod == "" {
-			for method := range r.trees {
-				if method == http.MethodOptions {
-					continue
-				}
-				// Add request method to list of allowed methods
-				allowed = append(allowed, method)
-			}
-		} else {
+		if reqMethod != "" {
 			return r.globalAllowed
+		}
+
+		for method := range r.trees {
+			if method == http.MethodOptions {
+				continue
+			}
+			// Add request method to list of allowed methods
+			allowed = append(allowed, method)
 		}
 	} else { // specific path
 		for method := range r.trees {
@@ -437,23 +477,23 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 		}
 	}
 
-	if len(allowed) > 0 {
-		// Add request method to list of allowed methods
-		allowed = append(allowed, http.MethodOptions)
-
-		// Sort allowed methods.
-		// sort.Strings(allowed) unfortunately causes unnecessary allocations
-		// due to allowed being moved to the heap and interface conversion
-		for i, l := 1, len(allowed); i < l; i++ {
-			for j := i; j > 0 && allowed[j] < allowed[j-1]; j-- {
-				allowed[j], allowed[j-1] = allowed[j-1], allowed[j]
-			}
-		}
-
-		// return as comma separated list
-		return strings.Join(allowed, ", ")
+	if len(allowed) == 0 {
+		return
 	}
-	return
+	// Add request method to list of allowed methods
+	allowed = append(allowed, http.MethodOptions)
+
+	// Sort allowed methods.
+	// sort.Strings(allowed) unfortunately causes unnecessary allocations
+	// due to allowed being moved to the heap and interface conversion
+	for i, l := 1, len(allowed); i < l; i++ {
+		for j := i; j > 0 && allowed[j] < allowed[j-1]; j-- {
+			allowed[j], allowed[j-1] = allowed[j-1], allowed[j]
+		}
+	}
+
+	// return as comma separated list
+	return strings.Join(allowed, ", ")
 }
 
 // ServeHTTP makes the router implement the http.Handler interface.
@@ -465,7 +505,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 
 	if root := r.trees[req.Method]; root != nil {
-		if handle, ps, tsr := root.getValue(path, r.getParams); handle != nil {
+		handle, ps, tsr := root.getValue(path, r.getParams)
+		if handle != nil {
 			if ps != nil {
 				handle(w, req, *ps)
 				r.putParams(ps)
@@ -473,7 +514,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				handle(w, req, nil)
 			}
 			return
-		} else if req.Method != http.MethodConnect && path != "/" {
+		}
+		if req.Method != http.MethodConnect && path != "/" {
 			// Moved Permanently, request with GET method
 			code := http.StatusMovedPermanently
 			if req.Method != http.MethodGet {
