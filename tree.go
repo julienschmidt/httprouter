@@ -92,7 +92,6 @@ func (n *node) incrementChildPrio(pos int) int {
 	for ; newPos > 0 && cs[newPos-1].priority < prio; newPos-- {
 		// Swap node positions
 		cs[newPos-1], cs[newPos] = cs[newPos], cs[newPos-1]
-
 	}
 
 	// Build new index char string
@@ -145,72 +144,72 @@ walk:
 			n.wildChild = false
 		}
 
-		// Make new node a child of this node
-		if i < len(path) {
-			path = path[i:]
-
-			if n.wildChild {
-				n = n.children[0]
-				n.priority++
-
-				// Check if the wildcard matches
-				if len(path) >= len(n.path) && n.path == path[:len(n.path)] &&
-					// Adding a child to a catchAll is not possible
-					n.nType != catchAll &&
-					// Check for longer wildcard, e.g. :name and :names
-					(len(n.path) >= len(path) || path[len(n.path)] == '/') {
-					continue walk
-				} else {
-					// Wildcard conflict
-					pathSeg := path
-					if n.nType != catchAll {
-						pathSeg = strings.SplitN(pathSeg, "/", 2)[0]
-					}
-					prefix := fullPath[:strings.Index(fullPath, pathSeg)] + n.path
-					panic("'" + pathSeg +
-						"' in new path '" + fullPath +
-						"' conflicts with existing wildcard '" + n.path +
-						"' in existing prefix '" + prefix +
-						"'")
-				}
+		if i == len(path) {
+			// Otherwise add handle to current node
+			if n.handle != nil {
+				panic("a handle is already registered for path '" + fullPath + "'")
 			}
-
-			idxc := path[0]
-
-			// '/' after param
-			if n.nType == param && idxc == '/' && len(n.children) == 1 {
-				n = n.children[0]
-				n.priority++
-				continue walk
-			}
-
-			// Check if a child with the next path byte exists
-			for i, c := range []byte(n.indices) {
-				if c == idxc {
-					i = n.incrementChildPrio(i)
-					n = n.children[i]
-					continue walk
-				}
-			}
-
-			// Otherwise insert it
-			if idxc != ':' && idxc != '*' {
-				// []byte for proper unicode char conversion, see #65
-				n.indices += string([]byte{idxc})
-				child := &node{}
-				n.children = append(n.children, child)
-				n.incrementChildPrio(len(n.indices) - 1)
-				n = child
-			}
-			n.insertChild(path, fullPath, handle)
+			n.handle = handle
 			return
 		}
 
-		// Otherwise add handle to current node
-		if n.handle != nil {
-			panic("a handle is already registered for path '" + fullPath + "'")
+		// Make new node a child of this node
+		path = path[i:]
+
+		if n.wildChild {
+			n = n.children[0]
+			n.priority++
+
+			// Check if the wildcard matches
+			if len(path) >= len(n.path) && n.path == path[:len(n.path)] &&
+				// Adding a child to a catchAll is not possible
+				n.nType != catchAll &&
+				// Check for longer wildcard, e.g. :name and :names
+				(len(n.path) >= len(path) || path[len(n.path)] == '/') {
+				continue walk
+			}
+			// Wildcard conflict
+			pathSeg := path
+			if n.nType != catchAll {
+				pathSeg = strings.SplitN(pathSeg, "/", 2)[0]
+			}
+			prefix := fullPath[:strings.Index(fullPath, pathSeg)] + n.path
+			panic("'" + pathSeg +
+				"' in new path '" + fullPath +
+				"' conflicts with existing wildcard '" + n.path +
+				"' in existing prefix '" + prefix +
+				"'")
+
 		}
-		n.handle = handle
+
+		idxc := path[0]
+
+		// '/' after param
+		if n.nType == param && idxc == '/' && len(n.children) == 1 {
+			n = n.children[0]
+			n.priority++
+			continue walk
+		}
+
+		// Check if a child with the next path byte exists
+		for i, c := range []byte(n.indices) {
+			if c == idxc {
+				i = n.incrementChildPrio(i)
+				n = n.children[i]
+				continue walk
+			}
+		}
+
+		// Otherwise insert it
+		if idxc != ':' && idxc != '*' {
+			// []byte for proper unicode char conversion, see #65
+			n.indices += string([]byte{idxc})
+			child := &node{}
+			n.children = append(n.children, child)
+			n.incrementChildPrio(len(n.indices) - 1)
+			n = child
+		}
+		n.insertChild(path, fullPath, handle)
 		return
 	}
 }
@@ -273,44 +272,46 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 			n.handle = handle
 			return
 
-		} else { // catchAll
-			if i+len(wildcard) != len(path) {
-				panic("catch-all routes are only allowed at the end of the path in path '" + fullPath + "'")
-			}
-
-			if len(n.path) > 0 && n.path[len(n.path)-1] == '/' {
-				panic("catch-all conflicts with existing handle for the path segment root in path '" + fullPath + "'")
-			}
-
-			// Currently fixed width 1 for '/'
-			i--
-			if path[i] != '/' {
-				panic("no / before catch-all in path '" + fullPath + "'")
-			}
-
-			n.path = path[:i]
-
-			// First node: catchAll node with empty path
-			child := &node{
-				wildChild: true,
-				nType:     catchAll,
-			}
-			n.children = []*node{child}
-			n.indices = string('/')
-			n = child
-			n.priority++
-
-			// Second node: node holding the variable
-			child = &node{
-				path:     path[i:],
-				nType:    catchAll,
-				handle:   handle,
-				priority: 1,
-			}
-			n.children = []*node{child}
-
-			return
 		}
+
+		// catchAll
+		if i+len(wildcard) != len(path) {
+			panic("catch-all routes are only allowed at the end of the path in path '" + fullPath + "'")
+		}
+
+		if len(n.path) > 0 && n.path[len(n.path)-1] == '/' {
+			panic("catch-all conflicts with existing handle for the path segment root in path '" + fullPath + "'")
+		}
+
+		// Currently fixed width 1 for '/'
+		i--
+		if path[i] != '/' {
+			panic("no / before catch-all in path '" + fullPath + "'")
+		}
+
+		n.path = path[:i]
+
+		// First node: catchAll node with empty path
+		child := &node{
+			wildChild: true,
+			nType:     catchAll,
+		}
+		n.children = []*node{child}
+		n.indices = string('/')
+		n = child
+		n.priority++
+
+		// Second node: node holding the variable
+		child = &node{
+			path:     path[i:],
+			nType:    catchAll,
+			handle:   handle,
+			priority: 1,
+		}
+		n.children = []*node{child}
+
+		return
+
 	}
 
 	// If no wildcard was found, simply insert the path and handle
@@ -327,101 +328,7 @@ func (n *node) getValue(path string, params func() *Params) (handle Handle, ps *
 walk: // Outer loop for walking the tree
 	for {
 		prefix := n.path
-		if len(path) > len(prefix) {
-			if path[:len(prefix)] == prefix {
-				path = path[len(prefix):]
-
-				// If this node does not have a wildcard (param or catchAll)
-				// child, we can just look up the next child node and continue
-				// to walk down the tree
-				if !n.wildChild {
-					idxc := path[0]
-					for i, c := range []byte(n.indices) {
-						if c == idxc {
-							n = n.children[i]
-							continue walk
-						}
-					}
-
-					// Nothing found.
-					// We can recommend to redirect to the same URL without a
-					// trailing slash if a leaf exists for that path.
-					tsr = (path == "/" && n.handle != nil)
-					return
-
-				}
-
-				// Handle wildcard child
-				n = n.children[0]
-				switch n.nType {
-				case param:
-					// Find param end (either '/' or path end)
-					end := 0
-					for end < len(path) && path[end] != '/' {
-						end++
-					}
-
-					// Save param value
-					if params != nil {
-						if ps == nil {
-							ps = params()
-						}
-						// Expand slice within preallocated capacity
-						i := len(*ps)
-						*ps = (*ps)[:i+1]
-						(*ps)[i] = Param{
-							Key:   n.path[1:],
-							Value: path[:end],
-						}
-					}
-
-					// We need to go deeper!
-					if end < len(path) {
-						if len(n.children) > 0 {
-							path = path[end:]
-							n = n.children[0]
-							continue walk
-						}
-
-						// ... but we can't
-						tsr = (len(path) == end+1)
-						return
-					}
-
-					if handle = n.handle; handle != nil {
-						return
-					} else if len(n.children) == 1 {
-						// No handle found. Check if a handle for this path + a
-						// trailing slash exists for TSR recommendation
-						n = n.children[0]
-						tsr = (n.path == "/" && n.handle != nil)
-					}
-
-					return
-
-				case catchAll:
-					// Save param value
-					if params != nil {
-						if ps == nil {
-							ps = params()
-						}
-						// Expand slice within preallocated capacity
-						i := len(*ps)
-						*ps = (*ps)[:i+1]
-						(*ps)[i] = Param{
-							Key:   n.path[2:],
-							Value: path,
-						}
-					}
-
-					handle = n.handle
-					return
-
-				default:
-					panic("invalid node type")
-				}
-			}
-		} else if path == prefix {
+		if path == prefix {
 			// We should have reached the node containing the handle.
 			// Check if this node has a handle registered.
 			if handle = n.handle; handle != nil {
@@ -449,6 +356,100 @@ walk: // Outer loop for walking the tree
 			return
 		}
 
+		if len(path) > len(prefix) && path[:len(prefix)] == prefix {
+			path = path[len(prefix):]
+
+			// If this node does not have a wildcard (param or catchAll)
+			// child, we can just look up the next child node and continue
+			// to walk down the tree
+			if !n.wildChild {
+				idxc := path[0]
+				for i, c := range []byte(n.indices) {
+					if c == idxc {
+						n = n.children[i]
+						continue walk
+					}
+				}
+
+				// Nothing found.
+				// We can recommend to redirect to the same URL without a
+				// trailing slash if a leaf exists for that path.
+				tsr = (path == "/" && n.handle != nil)
+				return
+
+			}
+
+			// Handle wildcard child
+			n = n.children[0]
+			switch n.nType {
+			case param:
+				// Find param end (either '/' or path end)
+				end := 0
+				for end < len(path) && path[end] != '/' {
+					end++
+				}
+
+				// Save param value
+				if params != nil {
+					if ps == nil {
+						ps = params()
+					}
+					// Expand slice within preallocated capacity
+					i := len(*ps)
+					*ps = (*ps)[:i+1]
+					(*ps)[i] = Param{
+						Key:   n.path[1:],
+						Value: path[:end],
+					}
+				}
+
+				// We need to go deeper!
+				if end < len(path) {
+					if len(n.children) > 0 {
+						path = path[end:]
+						n = n.children[0]
+						continue walk
+					}
+
+					// ... but we can't
+					tsr = (len(path) == end+1)
+					return
+				}
+
+				if handle = n.handle; handle != nil {
+					return
+				} else if len(n.children) == 1 {
+					// No handle found. Check if a handle for this path + a
+					// trailing slash exists for TSR recommendation
+					n = n.children[0]
+					tsr = (n.path == "/" && n.handle != nil)
+				}
+
+				return
+
+			case catchAll:
+				// Save param value
+				if params != nil {
+					if ps == nil {
+						ps = params()
+					}
+					// Expand slice within preallocated capacity
+					i := len(*ps)
+					*ps = (*ps)[:i+1]
+					(*ps)[i] = Param{
+						Key:   n.path[2:],
+						Value: path,
+					}
+				}
+
+				handle = n.handle
+				return
+
+			default:
+				panic("invalid node type")
+			}
+		}
+
 		// Nothing found. We can recommend to redirect to the same URL with an
 		// extra trailing slash if a leaf exists for that path
 		tsr = (path == "/") ||
@@ -463,13 +464,13 @@ walk: // Outer loop for walking the tree
 // It returns the case-corrected path and a bool indicating whether the lookup
 // was successful.
 func (n *node) findCaseInsensitivePath(path string, fixTrailingSlash bool) (fixedPath string, found bool) {
-	const stackBufSize = 128
-
-	// Use a static sized buffer on the stack in the common case.
-	// If the path is too long, allocate a buffer on the heap instead.
-	buf := make([]byte, 0, stackBufSize)
-	if l := len(path) + 1; l > stackBufSize {
-		buf = make([]byte, 0, l)
+	const stackBufSize = 256
+	var buf []byte
+	if len(path)+1 < stackBufSize {
+		var sbuf [stackBufSize]byte
+		buf = sbuf[:0]
+	} else {
+		buf = make([]byte, 0, len(path)+1)
 	}
 
 	ciPath := n.findCaseInsensitivePathRec(
@@ -488,7 +489,7 @@ func shiftNRuneBytes(rb [4]byte, n int) [4]byte {
 	case 0:
 		return rb
 	case 1:
-		return [4]byte{rb[1], rb[2], rb[3], 0}
+		return [4]byte{rb[1], rb[2], rb[3]}
 	case 2:
 		return [4]byte{rb[2], rb[3]}
 	case 3:

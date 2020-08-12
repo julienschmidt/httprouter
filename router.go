@@ -79,6 +79,7 @@ package httprouter
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -110,6 +111,45 @@ func (ps Params) ByName(name string) string {
 	return ""
 }
 
+// GetExt returns the value split at the last extension available, for example:
+//	if :filename == "report.json", GetExt("filename") returns "report", "json"
+func (ps Params) GetExt(name string) (val, ext string) {
+	val = ps.ByName(name)
+	for i := len(val) - 1; i > -1; i-- {
+		if val[i] == '.' {
+			return val[:i], val[i+1:]
+		}
+	}
+	return
+}
+
+func (ps Params) Float(name string) float64 {
+	v, _ := strconv.ParseFloat(ps.ByName(name), 64)
+	return v
+}
+
+func (ps Params) Int(name string) int64 {
+	v, _ := strconv.ParseInt(ps.ByName(name), 10, 64)
+	return v
+}
+
+func (ps Params) Uint(name string) uint64 {
+	v, _ := strconv.ParseUint(ps.ByName(name), 10, 64)
+	return v
+}
+
+func (ps Params) Bool(name string) bool {
+	v, _ := strconv.ParseBool(ps.ByName(name))
+	return v
+}
+
+// Clone returns a copy of ps, required if you want to store it somewhere or use it outside of your handler.
+func (ps Params) Clone() Params {
+	cp := make(Params, len(ps))
+	copy(cp, ps)
+	return cp
+}
+
 type paramsKey struct{}
 
 // ParamsKey is the request context key under which URL params are stored.
@@ -133,10 +173,48 @@ func (ps Params) MatchedRoutePath() string {
 	return ps.ByName(MatchedRoutePathParam)
 }
 
+var methodNames = [...]string{
+	http.MethodGet,
+	http.MethodHead,
+	http.MethodPost,
+	http.MethodPut,
+	http.MethodPatch,
+	http.MethodDelete,
+	http.MethodConnect,
+	http.MethodOptions,
+	http.MethodTrace,
+}
+
+func treeIdx(name string) int {
+	switch name {
+	case http.MethodGet:
+		return 0
+	case http.MethodHead:
+		return 1
+	case http.MethodPost:
+		return 2
+	case http.MethodPut:
+		return 3
+	case http.MethodPatch:
+		return 4
+	case http.MethodDelete:
+		return 5
+	case http.MethodConnect:
+		return 6
+	case http.MethodOptions:
+		return 7
+	case http.MethodTrace:
+		return 8
+	default:
+		return -1
+	}
+}
+
 // Router is a http.Handler which can be used to dispatch requests to different
 // handler functions via configurable routes
 type Router struct {
-	trees map[string]*node
+	trees         *[9]*node
+	customMethods map[string]*node
 
 	paramsPool sync.Pool
 	maxParams  uint16
@@ -216,17 +294,40 @@ func New() *Router {
 		RedirectFixedPath:      true,
 		HandleMethodNotAllowed: true,
 		HandleOPTIONS:          true,
+
+		trees: &[9]*node{},
 	}
+}
+
+func (r *Router) getTree(method string) *node {
+	if idx := treeIdx(method); idx != -1 {
+		return r.trees[idx]
+	}
+	return r.customMethods[method]
+}
+
+func (r *Router) newNode(method string) (n *node) {
+	n = new(node)
+	if idx := treeIdx(method); idx != -1 {
+		r.trees[idx] = n
+		return
+	}
+	// lazy init custom methods, 99.999% of the time won't happen
+	if r.customMethods == nil {
+		r.customMethods = map[string]*node{}
+	}
+	r.customMethods[method] = n
+	return
 }
 
 func (r *Router) getParams() *Params {
 	ps := r.paramsPool.Get().(*Params)
-	*ps = (*ps)[0:0] // reset slice
 	return ps
 }
 
 func (r *Router) putParams(ps *Params) {
 	if ps != nil {
+		*ps = (*ps)[0:0] // reset slice
 		r.paramsPool.Put(ps)
 	}
 }
@@ -307,15 +408,11 @@ func (r *Router) Handle(method, path string, handle Handle) {
 		handle = r.saveMatchedRoutePath(path, handle)
 	}
 
-	if r.trees == nil {
-		r.trees = make(map[string]*node)
-	}
+	method = strings.ToUpper(method)
 
-	root := r.trees[method]
+	root := r.getTree(method)
 	if root == nil {
-		root = new(node)
-		r.trees[method] = root
-
+		root = r.newNode(method)
 		r.globalAllowed = r.allowed("*", "")
 	}
 
@@ -392,7 +489,7 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 // values. Otherwise the third return value indicates whether a redirection to
 // the same path with an extra / without the trailing slash should be performed.
 func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
-	if root := r.trees[method]; root != nil {
+	if root := r.getTree(method); root != nil {
 		handle, ps, tsr := root.getValue(path, r.getParams)
 		if handle == nil {
 			r.putParams(ps)
@@ -411,25 +508,27 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 
 	if path == "*" { // server-wide
 		// empty method is used for internal calls to refresh the cache
-		if reqMethod == "" {
-			for method := range r.trees {
-				if method == http.MethodOptions {
-					continue
-				}
-				// Add request method to list of allowed methods
-				allowed = append(allowed, method)
-			}
-		} else {
+		if reqMethod != "" {
 			return r.globalAllowed
 		}
+
+		for idx, n := range r.trees {
+			method := methodNames[idx]
+			if method == http.MethodOptions || n == nil {
+				continue
+			}
+			// Add request method to list of allowed methods
+			allowed = append(allowed, method)
+		}
 	} else { // specific path
-		for method := range r.trees {
+		for idx, n := range r.trees {
+			method := methodNames[idx]
 			// Skip the requested method - we already tried this one
-			if method == reqMethod || method == http.MethodOptions {
+			if method == reqMethod || method == http.MethodOptions || n == nil {
 				continue
 			}
 
-			handle, _, _ := r.trees[method].getValue(path, nil)
+			handle, _, _ := n.getValue(path, nil)
 			if handle != nil {
 				// Add request method to list of allowed methods
 				allowed = append(allowed, method)
@@ -437,23 +536,23 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 		}
 	}
 
-	if len(allowed) > 0 {
-		// Add request method to list of allowed methods
-		allowed = append(allowed, http.MethodOptions)
-
-		// Sort allowed methods.
-		// sort.Strings(allowed) unfortunately causes unnecessary allocations
-		// due to allowed being moved to the heap and interface conversion
-		for i, l := 1, len(allowed); i < l; i++ {
-			for j := i; j > 0 && allowed[j] < allowed[j-1]; j-- {
-				allowed[j], allowed[j-1] = allowed[j-1], allowed[j]
-			}
-		}
-
-		// return as comma separated list
-		return strings.Join(allowed, ", ")
+	if len(allowed) == 0 {
+		return
 	}
-	return
+	// Add request method to list of allowed methods
+	allowed = append(allowed, http.MethodOptions)
+
+	// Sort allowed methods.
+	// sort.Strings(allowed) unfortunately causes unnecessary allocations
+	// due to allowed being moved to the heap and interface conversion
+	for i, l := 1, len(allowed); i < l; i++ {
+		for j := i; j > 0 && allowed[j] < allowed[j-1]; j-- {
+			allowed[j], allowed[j-1] = allowed[j-1], allowed[j]
+		}
+	}
+
+	// return as comma separated list
+	return strings.Join(allowed, ", ")
 }
 
 // ServeHTTP makes the router implement the http.Handler interface.
@@ -464,8 +563,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	path := req.URL.Path
 
-	if root := r.trees[req.Method]; root != nil {
-		if handle, ps, tsr := root.getValue(path, r.getParams); handle != nil {
+	if root := r.getTree(req.Method); root != nil {
+		handle, ps, tsr := root.getValue(path, r.getParams)
+		if handle != nil {
 			if ps != nil {
 				handle(w, req, *ps)
 				r.putParams(ps)
@@ -473,7 +573,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				handle(w, req, nil)
 			}
 			return
-		} else if req.Method != http.MethodConnect && path != "/" {
+		}
+
+		if req.Method != http.MethodConnect && path != "/" {
 			// Moved Permanently, request with GET method
 			code := http.StatusMovedPermanently
 			if req.Method != http.MethodGet {
