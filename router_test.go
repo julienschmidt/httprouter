@@ -76,7 +76,7 @@ func (h handlerStruct) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestRouterAPI(t *testing.T) {
-	var get, head, options, post, put, patch, delete, handler, handlerFunc bool
+	var get, head, options, post, put, patch, delete, custom, handler, handlerFunc bool
 
 	httpHandler := handlerStruct{&handler}
 
@@ -102,6 +102,11 @@ func TestRouterAPI(t *testing.T) {
 	router.DELETE("/DELETE", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		delete = true
 	})
+
+	router.Handle("CUSTOM", "/CUSTOM", func(w http.ResponseWriter, r *http.Request, _ Params) {
+		custom = true
+	})
+
 	router.Handler(http.MethodGet, "/Handler", httpHandler)
 	router.HandlerFunc(http.MethodGet, "/HandlerFunc", func(w http.ResponseWriter, r *http.Request) {
 		handlerFunc = true
@@ -148,6 +153,11 @@ func TestRouterAPI(t *testing.T) {
 	r, _ = http.NewRequest(http.MethodDelete, "/DELETE", nil)
 	router.ServeHTTP(w, r)
 	if !delete {
+		t.Error("routing DELETE failed")
+	}
+	r, _ = http.NewRequest("CUSTOM", "/CUSTOM", nil)
+	router.ServeHTTP(w, r)
+	if !custom {
 		t.Error("routing DELETE failed")
 	}
 
