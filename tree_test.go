@@ -121,7 +121,7 @@ func TestTreeAddAndGet(t *testing.T) {
 		tree.addRoute(route, fakeHandler(route))
 	}
 
-	//printChildren(tree, "")
+	// printChildren(tree, "")
 
 	checkRequests(t, tree, testRequests{
 		{"/a", false, "/a", nil},
@@ -163,7 +163,7 @@ func TestTreeWildcard(t *testing.T) {
 		tree.addRoute(route, fakeHandler(route))
 	}
 
-	//printChildren(tree, "")
+	// printChildren(tree, "")
 
 	checkRequests(t, tree, testRequests{
 		{"/", false, "/", nil},
@@ -216,7 +216,7 @@ func testRoutes(t *testing.T, routes []testRoute) {
 		}
 	}
 
-	//printChildren(tree, "")
+	// printChildren(tree, "")
 }
 
 func TestTreeWildcardConflict(t *testing.T) {
@@ -283,7 +283,7 @@ func TestTreeDupliatePath(t *testing.T) {
 		}
 	}
 
-	//printChildren(tree, "")
+	// printChildren(tree, "")
 
 	checkRequests(t, tree, testRequests{
 		{"/", false, "/", nil},
@@ -334,7 +334,7 @@ func TestTreeCatchAllConflictRoot(t *testing.T) {
 
 func TestTreeCatchMaxParams(t *testing.T) {
 	tree := &node{}
-	var route = "/cmd/*filepath"
+	route := "/cmd/*filepath"
 	tree.addRoute(route, fakeHandler(route))
 }
 
@@ -408,7 +408,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		}
 	}
 
-	//printChildren(tree, "")
+	// printChildren(tree, "")
 
 	tsrRoutes := [...]string{
 		"/hi/",
@@ -626,6 +626,142 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 				t.Errorf("Wrong result for '%s': got %s, %t; want %s, %t",
 					test.in, string(out), found, test.out, test.found)
 				return
+			}
+		}
+	}
+}
+
+func BenchmarkTreeFindCaseInsensitivePath(b *testing.B) {
+	tree := &node{}
+
+	longPath := "/l" + strings.Repeat("o", 128) + "ng"
+	lOngPath := "/l" + strings.Repeat("O", 128) + "ng/"
+
+	routes := [...]string{
+		"/hi",
+		"/b/",
+		"/ABC/",
+		"/search/:query",
+		"/cmd/:tool/",
+		"/src/*filepath",
+		"/x",
+		"/x/y",
+		"/y/",
+		"/y/z",
+		"/0/:id",
+		"/0/:id/1",
+		"/1/:id/",
+		"/1/:id/2",
+		"/aa",
+		"/a/",
+		"/doc",
+		"/doc/go_faq.html",
+		"/doc/go1.html",
+		"/doc/go/away",
+		"/no/a",
+		"/no/b",
+		"/Π",
+		"/u/apfêl/",
+		"/u/äpfêl/",
+		"/u/öpfêl",
+		"/v/Äpfêl/",
+		"/v/Öpfêl",
+		"/w/♬",  // 3 byte
+		"/w/♭/", // 3 byte, last byte differs
+		"/w/𠜎",  // 4 byte
+		"/w/𠜏/", // 4 byte
+		longPath,
+	}
+
+	for _, route := range routes {
+		recv := catchPanic(func() {
+			tree.addRoute(route, fakeHandler(route))
+		})
+		if recv != nil {
+			b.Fatalf("panic inserting route '%s': %v", route, recv)
+		}
+	}
+
+	tests := []struct {
+		in    string
+		out   string
+		found bool
+		slash bool
+	}{
+		{"/HI", "/hi", true, false},
+		{"/HI/", "/hi", true, true},
+		{"/B", "/b/", true, true},
+		{"/B/", "/b/", true, false},
+		{"/abc", "/ABC/", true, true},
+		{"/abc/", "/ABC/", true, false},
+		{"/aBc", "/ABC/", true, true},
+		{"/aBc/", "/ABC/", true, false},
+		{"/abC", "/ABC/", true, true},
+		{"/abC/", "/ABC/", true, false},
+		{"/SEARCH/QUERY", "/search/QUERY", true, false},
+		{"/SEARCH/QUERY/", "/search/QUERY", true, true},
+		{"/CMD/TOOL/", "/cmd/TOOL/", true, false},
+		{"/CMD/TOOL", "/cmd/TOOL/", true, true},
+		{"/SRC/FILE/PATH", "/src/FILE/PATH", true, false},
+		{"/x/Y", "/x/y", true, false},
+		{"/x/Y/", "/x/y", true, true},
+		{"/X/y", "/x/y", true, false},
+		{"/X/y/", "/x/y", true, true},
+		{"/X/Y", "/x/y", true, false},
+		{"/X/Y/", "/x/y", true, true},
+		{"/Y/", "/y/", true, false},
+		{"/Y", "/y/", true, true},
+		{"/Y/z", "/y/z", true, false},
+		{"/Y/z/", "/y/z", true, true},
+		{"/Y/Z", "/y/z", true, false},
+		{"/Y/Z/", "/y/z", true, true},
+		{"/y/Z", "/y/z", true, false},
+		{"/y/Z/", "/y/z", true, true},
+		{"/Aa", "/aa", true, false},
+		{"/Aa/", "/aa", true, true},
+		{"/AA", "/aa", true, false},
+		{"/AA/", "/aa", true, true},
+		{"/aA", "/aa", true, false},
+		{"/aA/", "/aa", true, true},
+		{"/A/", "/a/", true, false},
+		{"/A", "/a/", true, true},
+		{"/DOC", "/doc", true, false},
+		{"/DOC/", "/doc", true, true},
+		{"/NO", "", false, true},
+		{"/DOC/GO", "", false, true},
+		{"/π", "/Π", true, false},
+		{"/π/", "/Π", true, true},
+		{"/u/ÄPFÊL/", "/u/äpfêl/", true, false},
+		{"/u/ÄPFÊL", "/u/äpfêl/", true, true},
+		{"/u/ÖPFÊL/", "/u/öpfêl", true, true},
+		{"/u/ÖPFÊL", "/u/öpfêl", true, false},
+		{"/v/äpfêL/", "/v/Äpfêl/", true, false},
+		{"/v/äpfêL", "/v/Äpfêl/", true, true},
+		{"/v/öpfêL/", "/v/Öpfêl", true, true},
+		{"/v/öpfêL", "/v/Öpfêl", true, false},
+		{"/w/♬/", "/w/♬", true, true},
+		{"/w/♭", "/w/♭/", true, true},
+		{"/w/𠜎/", "/w/𠜎", true, true},
+		{"/w/𠜏", "/w/𠜏/", true, true},
+		{lOngPath, longPath, true, true},
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+			out, found := tree.findCaseInsensitivePath(test.in, false)
+			if test.slash {
+				if found { // test needs a trailingSlash fix. It must not be found!
+					b.Errorf("Found without fixTrailingSlash: %s; got %s", test.in, string(out))
+				}
+			} else {
+				if found != test.found || (found && (string(out) != test.out)) {
+					b.Errorf("Wrong result for '%s': got %s, %t; want %s, %t",
+						test.in, string(out), found, test.out, test.found)
+					return
+				}
 			}
 		}
 	}
