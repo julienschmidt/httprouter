@@ -453,7 +453,8 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 		// return as comma separated list
 		return strings.Join(allowed, ", ")
 	}
-	return
+
+	return allow
 }
 
 // ServeHTTP makes the router implement the http.Handler interface.
