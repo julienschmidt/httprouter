@@ -220,7 +220,7 @@ func New() *Router {
 }
 
 func (r *Router) getParams() *Params {
-	ps := r.paramsPool.Get().(*Params)
+	ps, _ := r.paramsPool.Get().(*Params)
 	*ps = (*ps)[0:0] // reset slice
 	return ps
 }
@@ -235,7 +235,7 @@ func (r *Router) saveMatchedRoutePath(path string, handle Handle) Handle {
 	return func(w http.ResponseWriter, req *http.Request, ps Params) {
 		if ps == nil {
 			psp := r.getParams()
-			ps := (*psp)[0:1]
+			ps = (*psp)[0:1]
 			ps[0] = Param{Key: MatchedRoutePathParam, Value: path}
 			handle(w, req, ps)
 			r.putParams(psp)
