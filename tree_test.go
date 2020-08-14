@@ -48,13 +48,14 @@ func checkRequests(t *testing.T, tree *node, requests testRequests) {
 	for _, request := range requests {
 		handler, psp, _ := tree.getValue(request.path, getParams)
 
-		if handler == nil {
+		switch {
+		case handler == nil:
 			if !request.nilHandler {
 				t.Errorf("handle mismatch for route '%s': Expected non-nil handle", request.path)
 			}
-		} else if request.nilHandler {
+		case request.nilHandler:
 			t.Errorf("handle mismatch for route '%s': Expected nil handle", request.path)
-		} else {
+		default:
 			handler(nil, nil, nil)
 			if fakeHandlerValue != request.route {
 				t.Errorf("handle mismatch for route '%s': Wrong handle (%s != %s)", request.path, fakeHandlerValue, request.route)
