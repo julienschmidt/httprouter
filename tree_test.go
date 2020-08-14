@@ -202,7 +202,8 @@ type testRoute struct {
 func testRoutes(t *testing.T, routes []testRoute) {
 	tree := &node{}
 
-	for _, route := range routes {
+	for i := range routes {
+		route := routes[i]
 		recv := catchPanic(func() {
 			tree.addRoute(route.path, nil)
 		})
@@ -266,7 +267,8 @@ func TestTreeDupliatePath(t *testing.T) {
 		"/search/:query",
 		"/user_:name",
 	}
-	for _, route := range routes {
+	for i := range routes {
+		route := routes[i]
 		recv := catchPanic(func() {
 			tree.addRoute(route, fakeHandler(route))
 		})
@@ -303,7 +305,8 @@ func TestEmptyWildcardName(t *testing.T) {
 		"/cmd/:/",
 		"/src/*",
 	}
-	for _, route := range routes {
+	for i := range routes {
+		route := routes[i]
 		recv := catchPanic(func() {
 			tree.addRoute(route, nil)
 		})
@@ -347,7 +350,8 @@ func TestTreeDoubleWildcard(t *testing.T) {
 		"/:foo*bar",
 	}
 
-	for _, route := range routes {
+	for i := range routes {
+		route := routes[i]
 		tree := &node{}
 		recv := catchPanic(func() {
 			tree.addRoute(route, nil)
@@ -399,7 +403,8 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/no/b",
 		"/api/hello/:name",
 	}
-	for _, route := range routes {
+	for i := range routes {
+		route := routes[i]
 		recv := catchPanic(func() {
 			tree.addRoute(route, fakeHandler(route))
 		})
@@ -513,7 +518,8 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		longPath,
 	}
 
-	for _, route := range routes {
+	for i := range routes {
+		route := routes[i]
 		recv := catchPanic(func() {
 			tree.addRoute(route, fakeHandler(route))
 		})
@@ -524,7 +530,8 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 
 	// Check out == in for all registered routes
 	// With fixTrailingSlash = true
-	for _, route := range routes {
+	for i := range routes {
+		route := routes[i]
 		out, found := tree.findCaseInsensitivePath(route, true)
 		if !found {
 			t.Errorf("Route '%s' not found!", route)
@@ -533,7 +540,8 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		}
 	}
 	// With fixTrailingSlash = false
-	for _, route := range routes {
+	for i := range routes {
+		route := routes[i]
 		out, found := tree.findCaseInsensitivePath(route, false)
 		if !found {
 			t.Errorf("Route '%s' not found!", route)
@@ -672,7 +680,9 @@ func TestTreeWildcardConflictEx(t *testing.T) {
 		{"/conooo/xxx", "ooo", `/con:tact`, `:tact`},
 	}
 
-	for _, conflict := range conflicts {
+	for i := range conflicts {
+		conflict := conflicts[i]
+
 		// I have to re-create a 'tree', because the 'tree' will be
 		// in an inconsistent state when the loop recovers from the
 		// panic which threw by 'addRoute' function.
@@ -683,7 +693,8 @@ func TestTreeWildcardConflictEx(t *testing.T) {
 			"/who/foo/hello",
 		}
 
-		for _, route := range routes {
+		for i := range routes {
+			route := routes[i]
 			tree.addRoute(route, fakeHandler(route))
 		}
 
