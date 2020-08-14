@@ -240,7 +240,8 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 				"' conflicts with existing children in path '" + fullPath + "'")
 		}
 
-		if wildcard[0] == ':' { // param
+		// param
+		if wildcard[0] == ':' {
 			if i > 0 {
 				// Insert prefix before the current wildcard
 				n.path = path[:i]
@@ -271,45 +272,45 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 			// Otherwise we're done. Insert the handle in the new leaf
 			n.handle = handle
 			return
-
-		} else { // catchAll
-			if i+len(wildcard) != len(path) {
-				panic("catch-all routes are only allowed at the end of the path in path '" + fullPath + "'")
-			}
-
-			if len(n.path) > 0 && n.path[len(n.path)-1] == '/' {
-				panic("catch-all conflicts with existing handle for the path segment root in path '" + fullPath + "'")
-			}
-
-			// Currently fixed width 1 for '/'
-			i--
-			if path[i] != '/' {
-				panic("no / before catch-all in path '" + fullPath + "'")
-			}
-
-			n.path = path[:i]
-
-			// First node: catchAll node with empty path
-			child := &node{
-				wildChild: true,
-				nType:     catchAll,
-			}
-			n.children = []*node{child}
-			n.indices = string('/')
-			n = child
-			n.priority++
-
-			// Second node: node holding the variable
-			child = &node{
-				path:     path[i:],
-				nType:    catchAll,
-				handle:   handle,
-				priority: 1,
-			}
-			n.children = []*node{child}
-
-			return
 		}
+
+		// catchAll
+		if i+len(wildcard) != len(path) {
+			panic("catch-all routes are only allowed at the end of the path in path '" + fullPath + "'")
+		}
+
+		if len(n.path) > 0 && n.path[len(n.path)-1] == '/' {
+			panic("catch-all conflicts with existing handle for the path segment root in path '" + fullPath + "'")
+		}
+
+		// Currently fixed width 1 for '/'
+		i--
+		if path[i] != '/' {
+			panic("no / before catch-all in path '" + fullPath + "'")
+		}
+
+		n.path = path[:i]
+
+		// First node: catchAll node with empty path
+		child := &node{
+			wildChild: true,
+			nType:     catchAll,
+		}
+		n.children = []*node{child}
+		n.indices = string('/')
+		n = child
+		n.priority++
+
+		// Second node: node holding the variable
+		child = &node{
+			path:     path[i:],
+			nType:    catchAll,
+			handle:   handle,
+			priority: 1,
+		}
+		n.children = []*node{child}
+
+		return
 	}
 
 	// If no wildcard was found, simply insert the path and handle
