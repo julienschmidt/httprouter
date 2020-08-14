@@ -525,8 +525,8 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		out, found := tree.findCaseInsensitivePath(route, true)
 		if !found {
 			t.Errorf("Route '%s' not found!", route)
-		} else if string(out) != route {
-			t.Errorf("Wrong result for route '%s': %s", route, string(out))
+		} else if out != route {
+			t.Errorf("Wrong result for route '%s': %s", route, out)
 		}
 	}
 	// With fixTrailingSlash = false
@@ -535,8 +535,8 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		out, found := tree.findCaseInsensitivePath(route, false)
 		if !found {
 			t.Errorf("Route '%s' not found!", route)
-		} else if string(out) != route {
-			t.Errorf("Wrong result for route '%s': %s", route, string(out))
+		} else if out != route {
+			t.Errorf("Wrong result for route '%s': %s", route, out)
 		}
 	}
 
@@ -606,9 +606,9 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 	// With fixTrailingSlash = true
 	for _, test := range tests {
 		out, found := tree.findCaseInsensitivePath(test.in, true)
-		if found != test.found || (found && (string(out) != test.out)) {
+		if found != test.found || (found && (out != test.out)) {
 			t.Errorf("Wrong result for '%s': got %s, %t; want %s, %t",
-				test.in, string(out), found, test.out, test.found)
+				test.in, out, found, test.out, test.found)
 			return
 		}
 	}
@@ -617,12 +617,12 @@ func TestTreeFindCaseInsensitivePath(t *testing.T) {
 		out, found := tree.findCaseInsensitivePath(test.in, false)
 		if test.slash {
 			if found { // test needs a trailingSlash fix. It must not be found!
-				t.Errorf("Found without fixTrailingSlash: %s; got %s", test.in, string(out))
+				t.Errorf("Found without fixTrailingSlash: %s; got %s", test.in, out)
 			}
 		} else {
-			if found != test.found || (found && (string(out) != test.out)) {
+			if found != test.found || (found && (out != test.out)) {
 				t.Errorf("Wrong result for '%s': got %s, %t; want %s, %t",
-					test.in, string(out), found, test.out, test.found)
+					test.in, out, found, test.out, test.found)
 				return
 			}
 		}
