@@ -392,6 +392,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/no/a",
 		"/no/b",
 		"/api/hello/:name",
+		"/vendor/:x/*y",
 	}
 	for i := range routes {
 		route := routes[i]
@@ -420,6 +421,7 @@ func TestTreeTrailingSlashRedirect(t *testing.T) {
 		"/admin/config/",
 		"/admin/config/permissions/",
 		"/doc/",
+		"/vendor/x",
 	}
 	for _, route := range tsrRoutes {
 		handler, _, tsr := tree.getValue(route, nil)

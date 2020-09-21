@@ -393,7 +393,7 @@ walk: // Outer loop for walking the tree
 						// No handle found. Check if a handle for this path + a
 						// trailing slash exists for TSR recommendation
 						n = n.children[0]
-						tsr = (n.path == "/" && n.handle != nil)
+						tsr = (n.path == "/" && n.handle != nil) || (n.path == "" && n.indices == "/")
 					}
 
 					return
