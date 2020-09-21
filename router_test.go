@@ -5,6 +5,7 @@
 package httprouter
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -607,6 +608,16 @@ func TestRouterParamsFromContext(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !routed {
 		t.Fatal("Routing failed!")
+	}
+}
+
+func TestRequestParam(t *testing.T) {
+	params := Params{Param{"name", "gopher"}}
+	ctx := context.WithValue(context.Background(), ParamsKey, params)
+	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/user/gopher", nil)
+
+	if p := RequestParam(r, "name"); p != "gopher" {
+		t.Fatalf("Wrong parameter values: want gopher, got %s", p)
 	}
 }
 

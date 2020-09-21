@@ -122,6 +122,11 @@ func ParamsFromContext(ctx context.Context) Params {
 	return p
 }
 
+// RequestParam retrieves the parameter from the request context.
+func RequestParam(r *http.Request, key string) string {
+	return ParamsFromContext(r.Context()).ByName(key)
+}
+
 // MatchedRoutePathParam is the Param name under which the path of the matched
 // route is stored, if Router.SaveMatchedRoutePath is set.
 var MatchedRoutePathParam = "$matchedRoutePath"
