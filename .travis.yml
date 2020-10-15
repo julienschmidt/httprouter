@@ -1,3 +1,6 @@
+arch:
+  - ppc64le
+  - amd64
 sudo: false
 language: go
 go:
