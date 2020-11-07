@@ -246,6 +246,10 @@ func (r *Router) saveMatchedRoutePath(path string, handle Handle) Handle {
 	}
 }
 
+func (r *Router) NewGroup(path string) *RouteGroup {
+	return newRouteGroup(r, path)
+}
+
 // GET is a shortcut for router.Handle(http.MethodGet, path, handle)
 func (r *Router) GET(path string, handle Handle) {
 	r.Handle(http.MethodGet, path, handle)
