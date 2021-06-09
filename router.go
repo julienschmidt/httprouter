@@ -489,21 +489,21 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	path := req.URL.Path
-	//输出请求的处理日志
+	//log RequestURI
 	reqLog := fmt.Sprintf("[http-router] %-6s req.uri=%-12s", req.Method,req.RequestURI)
 
 	if root := r.trees[req.Method]; root != nil {
 		if handles, ps, tsr := root.getValue(path, r.getParams); handles != nil {
 			if ps != nil {
 				for _,handle := range handles {
-					//输出请求的处理日志
+					//log handler.name
 					fmt.Fprintf(DefaultWriter, reqLog+",req.handle=%-40s\n", runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name())
 					handle(w, req, *ps)
 					r.putParams(ps)
 				}
 			} else {
 				for _,handle := range handles {
-					//输出请求的处理日志
+					//log handler.name
 					fmt.Fprintf(DefaultWriter, reqLog+",req.handle=%-40s\n", runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name())
 					handle(w, req, nil)
 				}
