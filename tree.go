@@ -81,7 +81,7 @@ type node struct {
 	nType     nodeType
 	priority  uint32
 	children  []*node
-	handlers    HandlersChain
+	handlers  HandlersChain
 }
 
 // Increments priority of the given child and reorders if necessary
