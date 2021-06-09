@@ -81,6 +81,15 @@ func TestRouterAPI(t *testing.T) {
 	httpHandler := handlerStruct{&handler}
 
 	router := New()
+	router.GET("/GET", []Handle{})
+	router.GET("/GET",
+		func(w http.ResponseWriter, r *http.Request, _ Params) {
+		get = true
+		},
+		func(w http.ResponseWriter, r *http.Request, _ Params) {
+			get = true
+		},
+	)
 	router.GET("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		get = true
 	})
