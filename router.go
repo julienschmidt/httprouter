@@ -329,10 +329,8 @@ func (r *Router) Handle(method, path string, handles ...Handle) {
 
 	handleNames := ""
 	for _, handle := range handles {
-		if len(handleNames) > 0 {
-			handleNames =  handleNames + "," + runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name()
-		}else{
-			handleNames = runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name()
+		if handle != nil{
+			handleNames = handleNames+","+runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name()
 		}
 	}
 	fmt.Fprintf(DefaultWriter, "[router-debug] %-6s %-40s --> [%s] (%d handlers)\n", method, path,handleNames,len(handles) )
