@@ -25,10 +25,12 @@ import (
 
 // Used as a workaround since we can't compare functions or their addresses
 var fakeHandlerValue string
-
-func fakeHandler(val string) Handle {
-	return func(http.ResponseWriter, *http.Request, Params) {
-		fakeHandlerValue = val
+//HandlersChain
+func fakeHandler(val string) HandlersChain {
+	return []Handle{
+		func(http.ResponseWriter, *http.Request, Params) {
+			fakeHandlerValue = val
+		},
 	}
 }
 
@@ -46,29 +48,30 @@ func getParams() *Params {
 
 func checkRequests(t *testing.T, tree *node, requests testRequests) {
 	for _, request := range requests {
-		handler, psp, _ := tree.getValue(request.path, getParams)
-
-		switch {
-		case handler == nil:
-			if !request.nilHandler {
-				t.Errorf("handle mismatch for route '%s': Expected non-nil handle", request.path)
+		handlers, psp, _ := tree.getValue(request.path, getParams)
+		for _,handler := range handlers {
+			switch {
+			case handler == nil:
+				if !request.nilHandler {
+					t.Errorf("handle mismatch for route '%s': Expected non-nil handle", request.path)
+				}
+			case request.nilHandler:
+				t.Errorf("handle mismatch for route '%s': Expected nil handle", request.path)
+			default:
+				handler(nil, nil, nil)
+				if fakeHandlerValue != request.route {
+					t.Errorf("handle mismatch for route '%s': Wrong handle (%s != %s)", request.path, fakeHandlerValue, request.route)
+				}
 			}
-		case request.nilHandler:
-			t.Errorf("handle mismatch for route '%s': Expected nil handle", request.path)
-		default:
-			handler(nil, nil, nil)
-			if fakeHandlerValue != request.route {
-				t.Errorf("handle mismatch for route '%s': Wrong handle (%s != %s)", request.path, fakeHandlerValue, request.route)
+
+			var ps Params
+			if psp != nil {
+				ps = *psp
 			}
-		}
 
-		var ps Params
-		if psp != nil {
-			ps = *psp
-		}
-
-		if !reflect.DeepEqual(ps, request.ps) {
-			t.Errorf("Params mismatch for route '%s'", request.path)
+			if !reflect.DeepEqual(ps, request.ps) {
+				t.Errorf("Params mismatch for route '%s'", request.path)
+			}
 		}
 	}
 }
@@ -79,7 +82,7 @@ func checkPriorities(t *testing.T, n *node) uint32 {
 		prio += checkPriorities(t, n.children[i])
 	}
 
-	if n.handle != nil {
+	if n.handlers != nil {
 		prio++
 	}
 
