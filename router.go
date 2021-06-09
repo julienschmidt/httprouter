@@ -325,13 +325,14 @@ func (r *Router) Handle(method, path string, handles ...Handle) {
 	if r.trees == nil {
 		r.trees = make(map[string]*node)
 	}
-	//log handles
+	
 	handleNames := ""
 	for _, handle := range handles {
+		handleName := runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name()
 		if len(handleNames) > 0 {
-			handleNames =  handleNames + "," + runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name()
+			handleNames =  handleNames + "," + handleName
 		}else{
-			handleNames = runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name()
+			handleNames = handleName
 		}
 	}
 	fmt.Fprintf(DefaultWriter, "[router-debug] %-6s %-40s --> [%s] (%d handlers)\n", method, path,handleNames,len(handles) )
