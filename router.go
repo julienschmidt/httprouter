@@ -326,7 +326,7 @@ func (r *Router) Handle(method, path string, handles ...Handle) {
 		r.trees = make(map[string]*node)
 	}
 	
-	/*
+
 	handleNames := ""
 	for _, handle := range handles {
 		handleName := runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name()
@@ -337,7 +337,7 @@ func (r *Router) Handle(method, path string, handles ...Handle) {
 		}
 	}
 	fmt.Fprintf(DefaultWriter, "[router-debug] %-6s %-40s --> [%s] (%d handlers)\n", method, path,handleNames,len(handles) )
-	*/
+
 	root := r.trees[method]
 	if root == nil {
 		root = new(node)
