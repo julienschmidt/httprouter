@@ -71,7 +71,7 @@ const (
 	catchAll
 )
 
-//增加调用链特性：HandlersChain defines a HandlerFunc array.
+//HandlersChain defines a HandlerFunc array.
 type HandlersChain []Handle
 
 type node struct {
