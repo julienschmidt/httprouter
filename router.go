@@ -313,8 +313,8 @@ func (r *Router) Handle(method, path string, handles ...Handle) {
 	if len(path) < 1 || path[0] != '/' {
 		panic("path must begin with '/' in path '" + path + "'")
 	}
-	if handles == nil {
-		panic("handle must not be nil")
+	if handles == nil || len(handles)==0 {
+		panic("handles must not be nil")
 	}
 
 	if r.SaveMatchedRoutePath {
