@@ -313,8 +313,9 @@ func (r *Router) Handle(method, path string, handles ...Handle) {
 	if len(path) < 1 || path[0] != '/' {
 		panic("path must begin with '/' in path '" + path + "'")
 	}
-	if handles == nil || len(handles)==0 {
-		panic("handles must not be nil")
+	//HandlersChain is nil or array[0] is nil
+	if handles == nil || (len(handles)==1 && handles[0]==nil){
+		panic("handle must not be nil")
 	}
 
 	if r.SaveMatchedRoutePath {
@@ -325,18 +326,17 @@ func (r *Router) Handle(method, path string, handles ...Handle) {
 	if r.trees == nil {
 		r.trees = make(map[string]*node)
 	}
-	
 
 	handleNames := ""
 	for _, handle := range handles {
-		handleName := runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name()
 		if len(handleNames) > 0 {
-			handleNames =  handleNames + "," + handleName
+			handleNames =  handleNames + "," + runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name()
 		}else{
-			handleNames = handleName
+			handleNames = runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name()
 		}
 	}
 	fmt.Fprintf(DefaultWriter, "[router-debug] %-6s %-40s --> [%s] (%d handlers)\n", method, path,handleNames,len(handles) )
+
 
 	root := r.trees[method]
 	if root == nil {
@@ -491,23 +491,28 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	path := req.URL.Path
-	//log RequestURI
+	//输出请求的处理日志
 	reqLog := fmt.Sprintf("[http-router] %-6s req.uri=%-12s", req.Method,req.RequestURI)
 
 	if root := r.trees[req.Method]; root != nil {
 		if handles, ps, tsr := root.getValue(path, r.getParams); handles != nil {
 			if ps != nil {
 				for _,handle := range handles {
-					//log handler.name
+					//输出请求的处理日志
 					fmt.Fprintf(DefaultWriter, reqLog+",req.handle=%-40s\n", runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name())
 					handle(w, req, *ps)
 					r.putParams(ps)
 				}
 			} else {
 				for _,handle := range handles {
-					//log handler.name
-					fmt.Fprintf(DefaultWriter, reqLog+",req.handle=%-40s\n", runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name())
-					handle(w, req, nil)
+					if handle != nil{
+						//输出请求的处理日志
+						fmt.Fprintf(DefaultWriter, reqLog+",req.handle=%-40s\n", runtime.FuncForPC(reflect.ValueOf(handle).Pointer()).Name())
+						handle(w, req, nil)
+					}else{
+						//输出请求的处理日志
+						fmt.Fprintf(DefaultWriter, reqLog+",req.handle is nil,do nothing.\n")
+					}
 				}
 			}
 			return
