@@ -81,7 +81,6 @@ func TestRouterAPI(t *testing.T) {
 	httpHandler := handlerStruct{&handler}
 
 	router := New()
-	
 	router.GET("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		get = true
 	})
@@ -551,7 +550,7 @@ func TestRouterLookup(t *testing.T) {
 			}
 		}
 	}
-	
+
 	if params != nil {
 		t.Fatalf("Wrong parameter values: want %v, got %v", nil, params)
 	}
