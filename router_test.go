@@ -90,7 +90,6 @@ func TestRouterAPI(t *testing.T) {
 		},func(w http.ResponseWriter, r *http.Request, _ Params) {
 			get = true
 		},
-		nil,
 	)
 	router.HEAD("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		head = true
