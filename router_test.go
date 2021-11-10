@@ -413,6 +413,7 @@ func TestRouterNotFound(t *testing.T) {
 	router.GET("/path", handlerFunc)
 	router.GET("/dir/", handlerFunc)
 	router.GET("/", handlerFunc)
+	router.GET("/a/:id/b/", handlerFunc)
 
 	testRoutes := []struct {
 		route    string
@@ -428,6 +429,7 @@ func TestRouterNotFound(t *testing.T) {
 		{"/DIR", http.StatusMovedPermanently, "/dir/"},     // Fixed Case +/
 		{"/../path", http.StatusMovedPermanently, "/path"}, // CleanPath
 		{"/nope", http.StatusNotFound, ""},                 // NotFound
+		{"/a/c/", http.StatusNotFound, ""},                 // TSR, redirectslash
 	}
 	for _, tr := range testRoutes {
 		r, _ := http.NewRequest(http.MethodGet, tr.route, nil)

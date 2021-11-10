@@ -488,7 +488,15 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				} else {
 					req.URL.Path = path + "/"
 				}
-				http.Redirect(w, req, req.URL.String(), code)
+
+				// Path must exist to redirect
+				_, found := root.findCaseInsensitivePath(req.URL.Path, false)
+				if found {
+					http.Redirect(w, req, req.URL.String(), code)
+				} else {
+					http.NotFound(w, req)
+				}
+
 				return
 			}
 
