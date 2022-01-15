@@ -28,7 +28,7 @@ Of course you can also set **custom [`NotFound`](https://godoc.org/github.com/ju
 
 ## Usage
 
-This is just a quick introduction, view the [GoDoc](http://godoc.org/github.com/julienschmidt/httprouter) for details. To start, add **HttpRouter** to your dependences:
+This is just a quick introduction, view the [GoDoc](http://godoc.org/github.com/julienschmidt/httprouter) for details. To start, add **HttpRouter** to your dependencies:
 
     $ go get github.com/julienschmidt/httprouter
 
