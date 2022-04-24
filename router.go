@@ -203,6 +203,9 @@ type Router struct {
 	// The handler can be used to keep your server from crashing because of
 	// unrecovered panics.
 	PanicHandler func(http.ResponseWriter, *http.Request, interface{})
+
+	// Function to handle rewrite.
+	RewriteHandler func(originPath string) (newPath string)
 }
 
 // Make sure the Router conforms with the http.Handler interface
@@ -462,7 +465,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.PanicHandler != nil {
 		defer r.recv(w, req)
 	}
-
+	if r.RewriteHandler != nil {
+		req.URL.Path = r.RewriteHandler(req.URL.Path)
+	}
 	path := req.URL.Path
 
 	if root := r.trees[req.Method]; root != nil {
