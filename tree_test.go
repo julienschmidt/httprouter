@@ -699,3 +699,23 @@ func TestTreeWildcardConflictEx(t *testing.T) {
 		}
 	}
 }
+
+func TestRedirectTrailingSlash(t *testing.T) {
+	var data = []struct {
+		path string
+	}{
+		{"/hello/:name"},
+		{"/hello/:name/123"},
+		{"/hello/:name/234"},
+	}
+
+	node := &node{}
+	for _, item := range data {
+		node.addRoute(item.path, fakeHandler("test"))
+	}
+
+	_, _, tsr := node.getValue("/hello/abx/", nil)
+	if tsr != true {
+		t.Fatalf("want true, is false")
+	}
+}
