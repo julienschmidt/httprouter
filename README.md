@@ -291,6 +291,7 @@ If the HttpRouter is a bit too minimalistic for you, you might try one of the fo
 * [Hikaru](https://github.com/najeira/hikaru): Supports standalone and Google AppEngine
 * [Hitch](https://github.com/nbio/hitch): Hitch ties httprouter, [httpcontext](https://github.com/nbio/httpcontext), and middleware up in a bow
 * [httpway](https://github.com/corneldamian/httpway): Simple middleware extension with context for httprouter and a server with gracefully shutdown support
+* [Jett](https://github.com/saurabh0719/jett): A lightweight framework with subrouters, graceful shutdown and middleware at all levels.
 * [kami](https://github.com/guregu/kami): A tiny web framework using x/net/context
 * [Medeina](https://github.com/imdario/medeina): Inspired by Ruby's Roda and Cuba
 * [Neko](https://github.com/rocwong/neko): A lightweight web application framework for Golang
