@@ -298,3 +298,4 @@ If the HttpRouter is a bit too minimalistic for you, you might try one of the fo
 * [River](https://github.com/abiosoft/river): River is a simple and lightweight REST server
 * [siesta](https://github.com/VividCortex/siesta): Composable HTTP handlers with contexts
 * [xmux](https://github.com/rs/xmux): xmux is a httprouter fork on top of xhandler (net/context aware)
+* [intake](https://github.com/dbubel/intake): intake is a minimal http framework with enphasis on middleware groups
