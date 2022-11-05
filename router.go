@@ -88,6 +88,14 @@ import (
 // wildcards (path variables).
 type Handle func(http.ResponseWriter, *http.Request, Params)
 
+// Middleware is a function that accepts a httprouter.Handle function as input
+// and returns another httprouter.Handle function. These are used to
+// wrap the httprouter.Handler function to implement cross cutting functionalities like
+// authentication, logging etc..
+//
+// httprouter.Router exposes the function Use() to add Middleware functions to it.
+type Middleware func(Handle) Handle
+
 // Param is a single URL parameter, consisting of a key and a value.
 type Param struct {
 	Key   string
@@ -140,6 +148,12 @@ type Router struct {
 
 	paramsPool sync.Pool
 	maxParams  uint16
+
+	// Specifies the maximum number of middlewares. Setting this value will
+	// give better performance while adding the middlewares to the Router.
+	// Default value 0
+	MaxMiddlewares uint8
+	middlewares    []Middleware
 
 	// If enabled, adds the matched route path onto the http.Request context
 	// before invoking the handler.
@@ -301,6 +315,8 @@ func (r *Router) Handle(method, path string, handle Handle) {
 	if handle == nil {
 		panic("handle must not be nil")
 	}
+
+	handle = r.wrapMiddlewaresAroundHandler(handle)
 
 	if r.SaveMatchedRoutePath {
 		varsCount++
@@ -537,4 +553,32 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	} else {
 		http.NotFound(w, req)
 	}
+}
+
+// Function to add middlewares of type httprouter.Handle to the Router.
+// Middlewares can be added before and after definging the routes.
+// This function is not concurrency safe.
+//
+// The execution of the handlers will be in the following order.
+//
+// Middlewares added to Router before the route handler ->
+// Route handler -> Middlewares added to the Router after the route handler
+func (r *Router) Use(mw Middleware) {
+	// Lazy initialization of the middleware handles slice
+	if r.middlewares == nil {
+		r.middlewares = make([]Middleware, 0, r.MaxMiddlewares)
+	}
+	r.middlewares = append(r.middlewares, mw)
+}
+
+// This function sandwiches the specified handler between the middlewares
+// handlers. The middlewares wrapping will happen in the reverse order of
+// the middleware addition so that the execution of the middlewares will
+// keep their order.
+func (r *Router) wrapMiddlewaresAroundHandler (h Handle) Handle {
+	middlewareSize := len(r.middlewares)
+	for i := middlewareSize - 1; i >= 0; i-- {
+		h = r.middlewares[i](h)
+	}
+	return h
 }
