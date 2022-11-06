@@ -149,11 +149,7 @@ type Router struct {
 	paramsPool sync.Pool
 	maxParams  uint16
 
-	// Specifies the maximum number of middlewares. Setting this value will
-	// give better performance while adding the middlewares to the Router.
-	// Default value 0
-	MaxMiddlewares uint8
-	middlewares    []Middleware
+	middlewares []Middleware
 
 	// If enabled, adds the matched route path onto the http.Request context
 	// before invoking the handler.
@@ -555,24 +551,21 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// Function to add middlewares of type httprouter.Handle to the Router.
-// Middlewares can be added before and after definging the routes.
-// This function is not concurrency safe.
+// Function to add middleware of type httprouter.Middleware to the Router.
+// Middlewares are to be added to the router before defining the routes.
 //
-// The execution of the handlers will be in the following order.
-//
-// Middlewares added to Router before the route handler ->
-// Route handler -> Middlewares added to the Router after the route handler
-func (r *Router) Use(mw Middleware) {
-	// Lazy initialization of the middleware handles slice
+// The middlewares will then wrap the request handlers and be run in the order
+// they were added to the router.
+func (r *Router) Use (mw Middleware) {
+	// Lazy initialization of the middlewares slice
 	if r.middlewares == nil {
-		r.middlewares = make([]Middleware, 0, r.MaxMiddlewares)
+		r.middlewares = make([]Middleware, 0, 1)
 	}
 	r.middlewares = append(r.middlewares, mw)
 }
 
-// This function sandwiches the specified handler between the middlewares
-// handlers. The middlewares wrapping will happen in the reverse order of
+// This function sandwiches the specified handler between the middlewares.
+// The middlewares wrapping will happen in the reverse order of
 // the middleware addition so that the execution of the middlewares will
 // keep their order.
 func (r *Router) wrapMiddlewaresAroundHandler (h Handle) Handle {
