@@ -102,6 +102,39 @@ func TestCountParams(t *testing.T) {
 	}
 }
 
+func TestLongestCommonPrefix(t *testing.T) {
+	tests := []struct {
+		a string
+		b string
+		l int
+	}{
+		{"", "", 0},
+		{"", "a", 0},
+		{"a", "a", 1},
+		{"a", "b", 0},
+		{"a", "ab", 1},
+		{"ab", "ab", 2},
+		{"ab", "ac", 1},
+		{"ab", "bc", 0},
+		{"abc", "abcd", 3},
+		{"abcd", "abc", 3},
+		{"abcd", "abce", 3},
+		{"abcd", "abcf", 3},
+		{"abcd", "ab", 2},
+		{"abcd", "ac", 1},
+		{"abcd", "bc", 0},
+		{"abcd", "a", 1},
+		{"abcd", "b", 0},
+		{"abcd", "", 0},
+	}
+
+	for _, test := range tests {
+		if l := longestCommonPrefix(test.a, test.b); l != test.l {
+			t.Errorf("longestCommonPrefix(%q, %q) = %d, want %d", test.a, test.b, l, test.l)
+		}
+	}
+}
+
 func TestTreeAddAndGet(t *testing.T) {
 	tree := &node{}
 
