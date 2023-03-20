@@ -52,14 +52,14 @@ func findWildcard(path string) (wilcard string, i int, valid bool) {
 }
 
 func countParams(path string) uint16 {
-	var n uint
+	var n uint16
 	for i := range []byte(path) {
 		switch path[i] {
 		case ':', '*':
 			n++
 		}
 	}
-	return uint16(n)
+	return n
 }
 
 type nodeType uint8
