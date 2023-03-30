@@ -293,6 +293,7 @@ If the HttpRouter is a bit too minimalistic for you, you might try one of the fo
 * [httpway](https://github.com/corneldamian/httpway): Simple middleware extension with context for httprouter and a server with gracefully shutdown support
 * [kami](https://github.com/guregu/kami): A tiny web framework using x/net/context
 * [Medeina](https://github.com/imdario/medeina): Inspired by Ruby's Roda and Cuba
+* [nchi](https://github.com/muir/nchi): provides a [chi](https://github.com/go-chi/chi)-like framework using [nject](https://github.com/muir/nject) for flexibility and ease-of-use
 * [Neko](https://github.com/rocwong/neko): A lightweight web application framework for Golang
 * [pbgo](https://github.com/chai2010/pbgo): pbgo is a mini RPC/REST framework based on Protobuf
 * [River](https://github.com/abiosoft/river): River is a simple and lightweight REST server
