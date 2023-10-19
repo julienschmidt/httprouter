@@ -697,3 +697,26 @@ func TestRouterServeFiles(t *testing.T) {
 		t.Error("serving file failed")
 	}
 }
+
+func TestRouterUseEscapedPath(t *testing.T) {
+	router := New()
+	router.UseEscapedPath = true
+
+	routed := false
+	router.Handle(http.MethodGet, "/user/:name", func(w http.ResponseWriter, r *http.Request, ps Params) {
+		routed = true
+		want := Params{Param{"name", "foo/bar"}}
+		if !reflect.DeepEqual(ps, want) {
+			t.Fatalf("wrong wildcard values: want %v, got %v", want, ps)
+		}
+	})
+
+	w := new(mockResponseWriter)
+
+	req, _ := http.NewRequest(http.MethodGet, "/user/foo%2Fbar", nil)
+	router.ServeHTTP(w, req)
+
+	if !routed {
+		t.Fatal("routing failed")
+	}
+}
