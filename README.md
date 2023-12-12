@@ -285,6 +285,7 @@ If the HttpRouter is a bit too minimalistic for you, you might try one of the fo
 
 * [Ace](https://github.com/plimble/ace): Blazing fast Go Web Framework
 * [api2go](https://github.com/manyminds/api2go): A JSON API Implementation for Go
+* [Encore](https://github.com/encoredev/encore): Distributed systems framework for Go with infrastructure automation
 * [Gin](https://github.com/gin-gonic/gin): Features a martini-like API with much better performance
 * [Goat](https://github.com/bahlo/goat): A minimalistic REST API server in Go
 * [goMiddlewareChain](https://github.com/TobiEiss/goMiddlewareChain): An express.js-like-middleware-chain
