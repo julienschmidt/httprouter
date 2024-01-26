@@ -141,6 +141,12 @@ type Router struct {
 	paramsPool sync.Pool
 	maxParams  uint16
 
+	// If enabled, routing will always use the original request path, not the
+	// unescaped one. For example if a /users/:user handler is used and
+	// /users/foo%2fbar is requested, the handler will be called with user=foo%2fbar
+	// but if this option is disabled, /users/foo/bar will be looked up instead.
+	RawPathRouting bool
+
 	// If enabled, adds the matched route path onto the http.Request context
 	// before invoking the handler.
 	// The matched route path is only added to handlers of routes that were
@@ -464,6 +470,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	path := req.URL.Path
+	if r.RawPathRouting {
+		path = req.URL.RawPath
+	}
 
 	if root := r.trees[req.Method]; root != nil {
 		if handle, ps, tsr := root.getValue(path, r.getParams); handle != nil {

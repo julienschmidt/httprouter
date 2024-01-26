@@ -164,6 +164,33 @@ func TestRouterAPI(t *testing.T) {
 	}
 }
 
+func TestRawURL(t *testing.T) {
+	var paramOne, paramTwo string
+
+	router := New()
+	router.RawPathRouting = true
+	router.GET("/GET/:key/:value", func(w http.ResponseWriter, r *http.Request, p Params) {
+		if len(p) != 2 {
+			t.Error("params not parsed correctly")
+		}
+
+		paramOne = p.ByName("key")
+		paramTwo = p.ByName("value")
+	})
+
+	w := new(mockResponseWriter)
+
+	urlParamOne := "%2F"
+	urlParamTwo := "%20"
+	rawUrlPath := fmt.Sprintf("/GET/%s/%s", urlParamOne, urlParamTwo)
+	r, _ := http.NewRequest(http.MethodGet, rawUrlPath, nil)
+	router.ServeHTTP(w, r)
+
+	if paramOne != urlParamOne || paramTwo != urlParamTwo {
+		t.Error("raw URL parsing failed")
+	}
+}
+
 func TestRouterInvalidInput(t *testing.T) {
 	router := New()
 
