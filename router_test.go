@@ -697,3 +697,214 @@ func TestRouterServeFiles(t *testing.T) {
 		t.Error("serving file failed")
 	}
 }
+
+func TestNoMiddleware(t *testing.T) {
+	router := New()
+	router.Handle(http.MethodGet, "/test", func(_ http.ResponseWriter, _ *http.Request, _ Params) {})
+
+	w := new(mockResponseWriter)
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+
+	defer func() {
+		if rcv := recover(); rcv != nil {
+			t.Fatal("failed with panic")
+		}
+	}()
+
+	router.ServeHTTP(w, req)
+
+	if router.middlewares != nil {
+		t.Fatal("middleware array initialized even before adding a middleware")
+	}
+}
+
+func TestMiddlewareWrapsTheRequestHandler(t *testing.T) {
+	router := New()
+	middlewareInvoked := false
+	router.Use(func(h Handle) Handle {
+		return func(w http.ResponseWriter, r *http.Request, p Params) {
+			middlewareInvoked = true
+			h(w, r, p)
+		}
+	})
+	requestHandlerInvoked := false
+	router.Handle(http.MethodGet, "/test", func(_ http.ResponseWriter, _ *http.Request, _ Params) {
+		if !middlewareInvoked {
+			panic("middleware did not get invoked")
+		}
+		requestHandlerInvoked = true
+	})
+
+	w := new(mockResponseWriter)
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+
+	defer func() {
+		if rcv := recover(); rcv != nil {
+			t.Fatal("failed with panic")
+		}
+	}()
+
+	router.ServeHTTP(w, req)
+
+	if !middlewareInvoked {
+		t.Fatal("middleware did not get invoked")
+	}
+	if !requestHandlerInvoked {
+		t.Fatal("request handler did not get invoked")
+	}
+}
+
+func TestMiddlewareAndMultiplePaths(t *testing.T) {
+	router := New()
+	middlewareInvokeCount := 0
+	router.Use(func(h Handle) Handle {
+		return func(w http.ResponseWriter, r *http.Request, p Params) {
+			middlewareInvokeCount++
+			h(w, r, p)
+		}
+	})
+
+	router.Handle(http.MethodGet, "/test1", func(_ http.ResponseWriter, _ *http.Request, _ Params) {
+		if middlewareInvokeCount != 1 {
+			panic("middleware did not get invoked for test1")
+		}
+	})
+	router.Handle(http.MethodGet, "/test2", func(_ http.ResponseWriter, _ *http.Request, _ Params) {
+		if middlewareInvokeCount != 2 {
+			panic("middleware did not get invoked for test2")
+		}
+	})
+
+	defer func() {
+		if rcv := recover(); rcv != nil {
+			t.Fatal("failed with panic")
+		}
+	}()
+
+	w1 := new(mockResponseWriter)
+	req1, _ := http.NewRequest(http.MethodGet, "/test1", nil)
+	router.ServeHTTP(w1, req1)
+
+	w2 := new(mockResponseWriter)
+	req2, _ := http.NewRequest(http.MethodGet, "/test2", nil)
+	router.ServeHTTP(w2, req2)
+}
+
+func TestMiddlewareInvokeOrder(t *testing.T) {
+	router := New()
+	middlewareInvokeCount := 0
+	router.Use(func(h Handle) Handle {
+		return func(w http.ResponseWriter, r *http.Request, p Params) {
+			middlewareInvokeCount++
+			if middlewareInvokeCount != 1 {
+				panic("first middleware was not invoked first")
+			}
+			h(w, r, p)
+		}
+	})
+	router.Use(func(h Handle) Handle {
+		return func(w http.ResponseWriter, r *http.Request, p Params) {
+			middlewareInvokeCount++
+			if middlewareInvokeCount != 2 {
+				panic("second middleware was not invoked second")
+			}
+			h(w, r, p)
+		}
+	})
+
+	router.Handle(http.MethodGet, "/test", func(_ http.ResponseWriter, _ *http.Request, _ Params) {
+		if middlewareInvokeCount != 2 {
+			panic("both middlewares did not get invoked")
+		}
+	})
+
+	defer func() {
+		if rcv := recover(); rcv != nil {
+			t.Fatal("failed with panic")
+		}
+	}()
+
+	w := new(mockResponseWriter)
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	router.ServeHTTP(w, req)
+}
+
+func TestMiddlewareInvokeOrderAfterHandlerDone(t *testing.T) {
+	router := New()
+	middlewareInvokeCount := 0
+	router.Use(func(h Handle) Handle {
+		return func(w http.ResponseWriter, r *http.Request, p Params) {
+			h(w, r, p)
+			middlewareInvokeCount++
+			if middlewareInvokeCount != 2 {
+				panic("first middleware was not invoked in reverse")
+			}
+		}
+	})
+	router.Use(func(h Handle) Handle {
+		return func(w http.ResponseWriter, r *http.Request, p Params) {
+			h(w, r, p)
+			middlewareInvokeCount++
+			if middlewareInvokeCount != 1 {
+				panic("second middleware was not invoked in reverse")
+			}
+		}
+	})
+
+	router.Handle(http.MethodGet, "/test", func(_ http.ResponseWriter, _ *http.Request, _ Params) {
+	})
+
+	defer func() {
+		if rcv := recover(); rcv != nil {
+			t.Fatal("failed with panic")
+		}
+	}()
+
+	w := new(mockResponseWriter)
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	router.ServeHTTP(w, req)
+}
+
+func TestMiddlewaresWithMatchedRoutePath(t *testing.T) {
+	router := New()
+	router.SaveMatchedRoutePath = true
+	route := "/test/:name"
+	middlewareInvokeCount := 0
+	router.Use(func(h Handle) Handle {
+		return func(w http.ResponseWriter, r *http.Request, p Params) {
+			matchedRoute := p.MatchedRoutePath()
+			if route != matchedRoute {
+				t.Fatalf("Inside middleware: Wrong matched route: want %s, got %s", route, matchedRoute)
+			}
+			middlewareInvokeCount++
+			h(w, r, p)
+		}
+	})
+
+	handlerInvoked := false
+	handle := func(_ http.ResponseWriter, req *http.Request, ps Params) {
+		matchedRoute := ps.MatchedRoutePath()
+		if route != matchedRoute {
+			t.Fatalf("Inside handle: Wrong matched route: want %s, got %s", route, matchedRoute)
+		}
+		if middlewareInvokeCount != 1 {
+			t.Fatal("middleware did not get invoked")
+		}
+		handlerInvoked = true
+	}
+	router.Handle(http.MethodGet, route, handle)
+
+	defer func() {
+		if rcv := recover(); rcv != nil {
+			t.Fatal("failed with panic")
+		}
+	}()
+
+	w := new(mockResponseWriter)
+	req, _ := http.NewRequest(http.MethodGet, "/test/abc", nil)
+	router.ServeHTTP(w, req)
+
+	if !handlerInvoked {
+		t.Fatal("handler did not get invoked")
+	}
+}
