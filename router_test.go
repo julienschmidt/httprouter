@@ -81,9 +81,14 @@ func TestRouterAPI(t *testing.T) {
 	httpHandler := handlerStruct{&handler}
 
 	router := New()
-	router.GET("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
-		get = true
-	})
+
+	router.GET("/GET",
+		func(w http.ResponseWriter, r *http.Request, _ Params) {
+			get = true
+		},func(w http.ResponseWriter, r *http.Request, _ Params) {
+			get = true
+		},nil,
+	)
 	router.HEAD("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		head = true
 	})
@@ -509,9 +514,9 @@ func TestRouterLookup(t *testing.T) {
 	router := New()
 
 	// try empty router first
-	handle, _, tsr := router.Lookup(http.MethodGet, "/nope")
-	if handle != nil {
-		t.Fatalf("Got handle for unregistered pattern: %v", handle)
+	handles, _, tsr := router.Lookup(http.MethodGet, "/nope")
+	if handles != nil {
+		t.Fatalf("Got handle for unregistered pattern: %v", handles)
 	}
 	if tsr {
 		t.Error("Got wrong TSR recommendation!")
@@ -519,15 +524,19 @@ func TestRouterLookup(t *testing.T) {
 
 	// insert route and try again
 	router.GET("/user/:name", wantHandle)
-	handle, params, _ := router.Lookup(http.MethodGet, "/user/gopher")
-	if handle == nil {
-		t.Fatal("Got no handle!")
-	} else {
-		handle(nil, nil, nil)
-		if !routed {
-			t.Fatal("Routing failed!")
+	handles, params, _ := router.Lookup(http.MethodGet, "/user/gopher")
+
+	for _,handle := range handles {
+		if handle == nil {
+			t.Fatal("Got no handle!")
+		} else {
+			handle(nil, nil, nil)
+			if !routed {
+				t.Fatal("Routing failed!")
+			}
 		}
 	}
+
 	if !reflect.DeepEqual(params, wantParams) {
 		t.Fatalf("Wrong parameter values: want %v, got %v", wantParams, params)
 	}
@@ -535,30 +544,33 @@ func TestRouterLookup(t *testing.T) {
 
 	// route without param
 	router.GET("/user", wantHandle)
-	handle, params, _ = router.Lookup(http.MethodGet, "/user")
-	if handle == nil {
-		t.Fatal("Got no handle!")
-	} else {
-		handle(nil, nil, nil)
-		if !routed {
-			t.Fatal("Routing failed!")
+	handles, params, _ = router.Lookup(http.MethodGet, "/user")
+	for _,handle := range handles {
+		if handle == nil {
+			t.Fatal("Got no handle!")
+		} else {
+			handle(nil, nil, nil)
+			if !routed {
+				t.Fatal("Routing failed!")
+			}
 		}
 	}
+
 	if params != nil {
 		t.Fatalf("Wrong parameter values: want %v, got %v", nil, params)
 	}
 
-	handle, _, tsr = router.Lookup(http.MethodGet, "/user/gopher/")
-	if handle != nil {
-		t.Fatalf("Got handle for unregistered pattern: %v", handle)
+	handles, _, tsr = router.Lookup(http.MethodGet, "/user/gopher/")
+	if handles != nil {
+		t.Fatalf("Got handle for unregistered pattern: %v", handles)
 	}
 	if !tsr {
 		t.Error("Got no TSR recommendation!")
 	}
 
-	handle, _, tsr = router.Lookup(http.MethodGet, "/nope")
-	if handle != nil {
-		t.Fatalf("Got handle for unregistered pattern: %v", handle)
+	handles, _, tsr = router.Lookup(http.MethodGet, "/nope")
+	if handles != nil {
+		t.Fatalf("Got handle for unregistered pattern: %v", handles)
 	}
 	if tsr {
 		t.Error("Got wrong TSR recommendation!")
