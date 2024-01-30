@@ -203,6 +203,13 @@ type Router struct {
 	// The handler can be used to keep your server from crashing because of
 	// unrecovered panics.
 	PanicHandler func(http.ResponseWriter, *http.Request, interface{})
+
+	// Go 1.5 introduced the RawPath field in net/url to hold the encoded form of Path.
+	// The Parse function sets both Path and RawPath in the URL it returns,
+	// and URL's String method uses RawPath if it is a valid encoding of Path,
+	// by calling the EncodedPath method.
+	// This tells the router to use the request.URL.RawPath when parsing the path.
+	UseRawPath bool
 }
 
 // Make sure the Router conforms with the http.Handler interface
@@ -216,6 +223,7 @@ func New() *Router {
 		RedirectFixedPath:      true,
 		HandleMethodNotAllowed: true,
 		HandleOPTIONS:          true,
+		UseRawPath:             false,
 	}
 }
 
@@ -466,6 +474,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	path := req.URL.Path
+
+	if r.UseRawPath && req.URL.RawPath != "" {
+		path = req.URL.RawPath
+	}
 
 	if root := r.trees[req.Method]; root != nil {
 		if handle, ps, tsr := root.getValue(path, r.getParams); handle != nil {
