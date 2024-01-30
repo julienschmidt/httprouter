@@ -37,16 +37,15 @@ func findWildcard(path string) (wilcard string, i int, valid bool) {
 		}
 
 		// Find end and check for invalid characters
-		valid = true
 		for end, c := range []byte(path[start+1:]) {
 			switch c {
 			case '/':
-				return path[start : start+1+end], start, valid
+				return path[start : start+1+end], start, true
 			case ':', '*':
-				valid = false
+				return "", 0, false
 			}
 		}
-		return path[start:], start, valid
+		return path[start:], start, true
 	}
 	return "", -1, false
 }
