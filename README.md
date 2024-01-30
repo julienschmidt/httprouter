@@ -30,7 +30,9 @@ Of course you can also set **custom [`NotFound`](https://godoc.org/github.com/ju
 
 This is just a quick introduction, view the [Docs](http://pkg.go.dev/github.com/julienschmidt/httprouter) for details.
 
-Let's start with a trivial example:
+    $ go get github.com/julienschmidt/httprouter
+
+and use it, like in this trivial example:
 
 ```go
 package main
