@@ -198,7 +198,7 @@ type Router struct {
 	MethodNotAllowed http.Handler
 
 	// Function to handle panics recovered from http handlers.
-	// It should be used to generate a error page and return the http error code
+	// It should be used to generate an error page and return the http error code
 	// 500 (Internal Server Error).
 	// The handler can be used to keep your server from crashing because of
 	// unrecovered panics.
