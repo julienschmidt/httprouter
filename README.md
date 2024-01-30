@@ -1,4 +1,4 @@
-# HttpRouter [![Build Status](https://travis-ci.org/julienschmidt/httprouter.svg?branch=master)](https://travis-ci.org/julienschmidt/httprouter) [![Coverage Status](https://coveralls.io/repos/github/julienschmidt/httprouter/badge.svg?branch=master)](https://coveralls.io/github/julienschmidt/httprouter?branch=master) [![Docs](https://godoc.org/github.com/julienschmidt/httprouter?status.svg)](http://pkg.go.dev/github.com/julienschmidt/httprouter)
+# HttpRouter [![Coverage Status](https://coveralls.io/repos/github/julienschmidt/httprouter/badge.svg?branch=master)](https://coveralls.io/github/julienschmidt/httprouter?branch=master) [![Docs](https://godoc.org/github.com/julienschmidt/httprouter?status.svg)](http://pkg.go.dev/github.com/julienschmidt/httprouter)
 
 HttpRouter is a lightweight high performance HTTP request router (also called *multiplexer* or just *mux* for short) for [Go](https://golang.org/).
 
@@ -292,8 +292,10 @@ If the HttpRouter is a bit too minimalistic for you, you might try one of the fo
 * [Hitch](https://github.com/nbio/hitch): Hitch ties httprouter, [httpcontext](https://github.com/nbio/httpcontext), and middleware up in a bow
 * [httpway](https://github.com/corneldamian/httpway): Simple middleware extension with context for httprouter and a server with gracefully shutdown support
 * [intake](https://github.com/dbubel/intake): intake is a minimal http framework with enphasis on middleware groups
+* [Jett](https://github.com/saurabh0719/jett): A lightweight framework with subrouters, graceful shutdown and middleware at all levels.
 * [kami](https://github.com/guregu/kami): A tiny web framework using x/net/context
 * [Medeina](https://github.com/imdario/medeina): Inspired by Ruby's Roda and Cuba
+* [nchi](https://github.com/muir/nchi): provides a [chi](https://github.com/go-chi/chi)-like framework using [nject](https://github.com/muir/nject) for flexibility and ease-of-use
 * [Neko](https://github.com/rocwong/neko): A lightweight web application framework for Golang
 * [pbgo](https://github.com/chai2010/pbgo): pbgo is a mini RPC/REST framework based on Protobuf
 * [River](https://github.com/abiosoft/river): River is a simple and lightweight REST server
