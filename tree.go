@@ -165,7 +165,7 @@ walk:
 					if n.nType != catchAll {
 						pathSeg = strings.SplitN(pathSeg, "/", 2)[0]
 					}
-					prefix := fullPath[:strings.Index(fullPath, pathSeg)] + n.path
+					prefix := fullPath[:strings.LastIndex(fullPath, path)] + n.path
 					panic("'" + pathSeg +
 						"' in new path '" + fullPath +
 						"' conflicts with existing wildcard '" + n.path +
