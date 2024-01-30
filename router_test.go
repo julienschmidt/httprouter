@@ -11,6 +11,8 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type mockResponseWriter struct{}
@@ -695,5 +697,16 @@ func TestRouterServeFiles(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !mfs.opened {
 		t.Error("serving file failed")
+	}
+}
+func Test_ListRoutes(t *testing.T) {
+
+	handler := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+	router := New()
+	assert.Empty(t, router.ListRoutes())
+	router.Handle("GET", "/test/", handler)
+	routeList := router.ListRoutes()
+	if assert.NotEmpty(t, routeList) {
+		assert.Equal(t, "GET /test/", routeList[0])
 	}
 }
