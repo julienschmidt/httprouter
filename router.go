@@ -439,7 +439,9 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 
 	if len(allowed) > 0 {
 		// Add request method to list of allowed methods
-		allowed = append(allowed, http.MethodOptions)
+		if r.HandleOPTIONS {
+			allowed = append(allowed, http.MethodOptions)
+		}
 
 		// Sort allowed methods.
 		// sort.Strings(allowed) unfortunately causes unnecessary allocations
