@@ -124,7 +124,7 @@ func ParamsFromContext(ctx context.Context) Params {
 
 // MatchedRoutePathParam is the Param name under which the path of the matched
 // route is stored, if Router.SaveMatchedRoutePath is set.
-var MatchedRoutePathParam = "$matchedRoutePath"
+const MatchedRoutePathParam = "$matchedRoutePath"
 
 // MatchedRoutePath retrieves the path of the matched route.
 // Router.SaveMatchedRoutePath must have been enabled when the respective
