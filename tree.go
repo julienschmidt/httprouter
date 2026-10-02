@@ -62,6 +62,21 @@ func countParams(path string) uint16 {
 	return n
 }
 
+func getParamKeys(path string) []string {
+	var keys []string
+	for {
+		wildcard, i, valid := findWildcard(path)
+		if i < 0 {
+			break
+		}
+		if valid && len(wildcard) > 1 {
+			keys = append(keys, wildcard[1:])
+		}
+		path = path[i+len(wildcard):]
+	}
+	return keys
+}
+
 type nodeType uint8
 
 const (
@@ -79,6 +94,7 @@ type node struct {
 	priority  uint32
 	children  []*node
 	handle    Handle
+	paramKeys []string
 }
 
 // Increments priority of the given child and reorders if necessary
@@ -104,15 +120,26 @@ func (n *node) incrementChildPrio(pos int) int {
 	return newPos
 }
 
+func (n *node) updateParamKeys(ps *Params) {
+	if len(n.paramKeys) > 0 && ps != nil {
+		for i, k := range n.paramKeys {
+			if i < len(*ps) {
+				(*ps)[i].Key = k
+			}
+		}
+	}
+}
+
 // addRoute adds a node with the given handle to the path.
 // Not concurrency-safe!
 func (n *node) addRoute(path string, handle Handle) {
 	fullPath := path
 	n.priority++
+	paramKeys := getParamKeys(fullPath)
 
 	// Empty tree
 	if n.path == "" && n.indices == "" {
-		n.insertChild(path, fullPath, handle)
+		n.insertChild(path, fullPath, handle, paramKeys)
 		n.nType = root
 		return
 	}
@@ -133,6 +160,7 @@ walk:
 				indices:   n.indices,
 				children:  n.children,
 				handle:    n.handle,
+				paramKeys: n.paramKeys,
 				priority:  n.priority - 1,
 			}
 
@@ -141,6 +169,7 @@ walk:
 			n.indices = string([]byte{n.path[i]})
 			n.path = path[:i]
 			n.handle = nil
+			n.paramKeys = nil
 			n.wildChild = false
 		}
 
@@ -159,19 +188,24 @@ walk:
 					// Check for longer wildcard, e.g. :name and :names
 					(len(n.path) >= len(path) || path[len(n.path)] == '/') {
 					continue walk
-				} else {
-					// Wildcard conflict
-					pathSeg := path
-					if n.nType != catchAll {
-						pathSeg = strings.SplitN(pathSeg, "/", 2)[0]
+				} else if n.nType == param && len(path) > 0 && path[0] == ':' {
+					if wildcard, _, valid := findWildcard(path); valid && len(wildcard) >= 2 && (len(path) == len(wildcard) || path[len(wildcard)] == '/') {
+						path = n.path + path[len(wildcard):]
+						continue walk
 					}
-					prefix := fullPath[:strings.Index(fullPath, pathSeg)] + n.path
-					panic("'" + pathSeg +
-						"' in new path '" + fullPath +
-						"' conflicts with existing wildcard '" + n.path +
-						"' in existing prefix '" + prefix +
-						"'")
 				}
+
+				// Wildcard conflict
+				pathSeg := path
+				if n.nType != catchAll {
+					pathSeg = strings.SplitN(pathSeg, "/", 2)[0]
+				}
+				prefix := fullPath[:strings.Index(fullPath, pathSeg)] + n.path
+				panic("'" + pathSeg +
+					"' in new path '" + fullPath +
+					"' conflicts with existing wildcard '" + n.path +
+					"' in existing prefix '" + prefix +
+					"'")
 			}
 
 			idxc := path[0]
@@ -201,7 +235,7 @@ walk:
 				n.incrementChildPrio(len(n.indices) - 1)
 				n = child
 			}
-			n.insertChild(path, fullPath, handle)
+			n.insertChild(path, fullPath, handle, paramKeys)
 			return
 		}
 
@@ -210,11 +244,12 @@ walk:
 			panic("a handle is already registered for path '" + fullPath + "'")
 		}
 		n.handle = handle
+		n.paramKeys = paramKeys
 		return
 	}
 }
 
-func (n *node) insertChild(path, fullPath string, handle Handle) {
+func (n *node) insertChild(path, fullPath string, handle Handle, paramKeys []string) {
 	for {
 		// Find prefix until first wildcard
 		wildcard, i, valid := findWildcard(path)
@@ -271,6 +306,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 
 			// Otherwise we're done. Insert the handle in the new leaf
 			n.handle = handle
+			n.paramKeys = paramKeys
 			return
 		}
 
@@ -303,10 +339,11 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 
 		// Second node: node holding the variable
 		child = &node{
-			path:     path[i:],
-			nType:    catchAll,
-			handle:   handle,
-			priority: 1,
+			path:      path[i:],
+			nType:     catchAll,
+			handle:    handle,
+			paramKeys: paramKeys,
+			priority:  1,
 		}
 		n.children = []*node{child}
 
@@ -316,6 +353,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 	// If no wildcard was found, simply insert the path and handle
 	n.path = path
 	n.handle = handle
+	n.paramKeys = paramKeys
 }
 
 // Returns the handle registered with the given path (key). The values of
@@ -388,6 +426,7 @@ walk: // Outer loop for walking the tree
 					}
 
 					if handle = n.handle; handle != nil {
+						n.updateParamKeys(ps)
 						return
 					} else if len(n.children) == 1 {
 						// No handle found. Check if a handle for this path + a
@@ -414,6 +453,7 @@ walk: // Outer loop for walking the tree
 					}
 
 					handle = n.handle
+					n.updateParamKeys(ps)
 					return
 
 				default:
@@ -424,6 +464,7 @@ walk: // Outer loop for walking the tree
 			// We should have reached the node containing the handle.
 			// Check if this node has a handle registered.
 			if handle = n.handle; handle != nil {
+				n.updateParamKeys(ps)
 				return
 			}
 

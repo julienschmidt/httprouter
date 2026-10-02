@@ -719,3 +719,76 @@ func TestRedirectTrailingSlash(t *testing.T) {
 		t.Fatalf("want true, is false")
 	}
 }
+
+func TestTreeSharedWildcardDifferentNames(t *testing.T) {
+	tree := &node{}
+
+	routes := [...]string{
+		"/foo/:bar",
+		"/foo/:fighters/are/great",
+		"/users/:id",
+		"/users/:user_id/profile",
+		"/users/:uid/posts/:post_id",
+	}
+
+	for _, route := range routes {
+		recv := catchPanic(func() {
+			tree.addRoute(route, fakeHandler(route))
+		})
+		if recv != nil {
+			t.Fatalf("unexpected panic adding route '%s': %v", route, recv)
+		}
+	}
+
+	checkRequests(t, tree, testRequests{
+		{"/foo/xyz", false, "/foo/:bar", Params{Param{"bar", "xyz"}}},
+		{"/foo/xyz/are/great", false, "/foo/:fighters/are/great", Params{Param{"fighters", "xyz"}}},
+		{"/users/123", false, "/users/:id", Params{Param{"id", "123"}}},
+		{"/users/123/profile", false, "/users/:user_id/profile", Params{Param{"user_id", "123"}}},
+		{"/users/123/posts/456", false, "/users/:uid/posts/:post_id", Params{Param{"uid", "123"}, Param{"post_id", "456"}}},
+	})
+
+	checkPriorities(t, tree)
+}
+
+func TestTreeSharedWildcardDuplicatePatternPanic(t *testing.T) {
+	tree := &node{}
+	tree.addRoute("/users/:id", fakeHandler("/users/:id"))
+
+	recv := catchPanic(func() {
+		tree.addRoute("/users/:user_id", fakeHandler("/users/:user_id"))
+	})
+	if recv == nil {
+		t.Fatalf("expected panic registering duplicate route pattern with different wildcard name")
+	}
+	expected := "a handle is already registered for path '/users/:user_id'"
+	if fmt.Sprint(recv) != expected {
+		t.Fatalf("expected panic message %q, got %q", expected, fmt.Sprint(recv))
+	}
+}
+
+func TestTreeSharedWildcardReverseOrder(t *testing.T) {
+	tree := &node{}
+
+	// Register longer branch first, shorter branch second
+	routes := [...]string{
+		"/foo/:fighters/are/great",
+		"/foo/:bar",
+	}
+
+	for _, route := range routes {
+		recv := catchPanic(func() {
+			tree.addRoute(route, fakeHandler(route))
+		})
+		if recv != nil {
+			t.Fatalf("unexpected panic adding route '%s': %v", route, recv)
+		}
+	}
+
+	checkRequests(t, tree, testRequests{
+		{"/foo/xyz", false, "/foo/:bar", Params{Param{"bar", "xyz"}}},
+		{"/foo/xyz/are/great", false, "/foo/:fighters/are/great", Params{Param{"fighters", "xyz"}}},
+	})
+
+	checkPriorities(t, tree)
+}

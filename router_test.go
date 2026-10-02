@@ -697,3 +697,36 @@ func TestRouterServeFiles(t *testing.T) {
 		t.Error("serving file failed")
 	}
 }
+
+func TestRouterSharedWildcardDifferentNames(t *testing.T) {
+	router := New()
+
+	var routedBar, routedFighters bool
+	router.GET("/foo/:bar", func(w http.ResponseWriter, r *http.Request, ps Params) {
+		routedBar = true
+		if val := ps.ByName("bar"); val != "baz" {
+			t.Errorf("wrong param value for :bar: got %q, want %q", val, "baz")
+		}
+	})
+
+	router.GET("/foo/:fighters/are/great", func(w http.ResponseWriter, r *http.Request, ps Params) {
+		routedFighters = true
+		if val := ps.ByName("fighters"); val != "baz" {
+			t.Errorf("wrong param value for :fighters: got %q, want %q", val, "baz")
+		}
+	})
+
+	w := new(mockResponseWriter)
+	r, _ := http.NewRequest(http.MethodGet, "/foo/baz", nil)
+	router.ServeHTTP(w, r)
+	if !routedBar {
+		t.Error("failed to route to /foo/:bar")
+	}
+
+	w = new(mockResponseWriter)
+	r, _ = http.NewRequest(http.MethodGet, "/foo/baz/are/great", nil)
+	router.ServeHTTP(w, r)
+	if !routedFighters {
+		t.Error("failed to route to /foo/:fighters/are/great")
+	}
+}
