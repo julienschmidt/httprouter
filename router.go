@@ -78,7 +78,9 @@ package httprouter
 
 import (
 	"context"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -375,7 +377,13 @@ func (r *Router) ServeFiles(path string, root http.FileSystem) {
 	fileServer := http.FileServer(root)
 
 	r.GET(path, func(w http.ResponseWriter, req *http.Request, ps Params) {
-		req.URL.Path = ps.ByName("filepath")
+		filePath := ps.ByName("filepath")
+		req.URL.Path = filePath
+		if ctype := mime.TypeByExtension(filepath.Ext(filePath)); ctype != "" {
+			if w.Header().Get("Content-Type") == "" {
+				w.Header().Set("Content-Type", ctype)
+			}
+		}
 		fileServer.ServeHTTP(w, req)
 	})
 }

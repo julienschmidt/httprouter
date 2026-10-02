@@ -7,8 +7,12 @@ package httprouter
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"mime"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -695,5 +699,69 @@ func TestRouterServeFiles(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !mfs.opened {
 		t.Error("serving file failed")
+	}
+}
+
+func TestRouterServeFilesMIME(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "httprouter-mime-test-")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	files := map[string][]byte{
+		"video.mp4":   []byte("fake mp4 content"),
+		"styles.css":  []byte("body { color: red; }"),
+		"sample.png":  []byte("\x89PNG\r\n\x1a\n"),
+		"file.custom": []byte("custom content"),
+	}
+
+	for name, content := range files {
+		if err := ioutil.WriteFile(filepath.Join(tmpDir, name), content, 0644); err != nil {
+			t.Fatalf("failed to write %s: %v", name, err)
+		}
+	}
+
+	_ = mime.AddExtensionType(".custom", "application/x-custom")
+
+	router := New()
+	router.ServeFiles("/static/*filepath", http.Dir(tmpDir))
+
+	tests := []struct {
+		urlPath          string
+		expectedStatus   int
+		expectedMIMEType string
+	}{
+		{"/static/video.mp4", http.StatusOK, "video/mp4"},
+		{"/static/styles.css", http.StatusOK, "text/css; charset=utf-8"},
+		{"/static/sample.png", http.StatusOK, "image/png"},
+		{"/static/file.custom", http.StatusOK, "application/x-custom"},
+		{"/static/missing.mp4", http.StatusNotFound, "text/plain; charset=utf-8"},
+	}
+
+	for _, tc := range tests {
+		req, _ := http.NewRequest(http.MethodGet, tc.urlPath, nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != tc.expectedStatus {
+			t.Errorf("%s: got status %d, want %d", tc.urlPath, rec.Code, tc.expectedStatus)
+		}
+		if got := rec.Header().Get("Content-Type"); got != tc.expectedMIMEType {
+			t.Errorf("%s: got Content-Type %q, want %q", tc.urlPath, got, tc.expectedMIMEType)
+		}
+	}
+
+	// Test that an existing Content-Type header is not overwritten
+	req, _ := http.NewRequest(http.MethodGet, "/static/video.mp4", nil)
+	rec := httptest.NewRecorder()
+	rec.Header().Set("Content-Type", "application/octet-stream")
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("pre-set header test: got status %d, want %d", rec.Code, http.StatusOK)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "application/octet-stream" {
+		t.Errorf("pre-set header test: got Content-Type %q, want %q", got, "application/octet-stream")
 	}
 }
