@@ -471,6 +471,46 @@ func TestRouterNotFound(t *testing.T) {
 	}
 }
 
+// A route of the form "/:param/*catchall" (e.g. "/files/:dir/*filepath") stores
+// an extra "bridge" node between the param node and the catch-all. That bridge
+// node has an empty path, a single "/" index and no wildcard child.
+// findCaseInsensitivePathRec() scans for the next rune start with an upper bound
+// of min(len(n.path), 3), which is 0 for such a node, so no rune was ever decoded
+// and no index byte could ever match. The result was that RedirectFixedPath
+// answered 404 for every path below a "/:param/*catchall" route, even though the
+// very same path matches when spelled with the correct case.
+func TestRouterNotFoundParamFollowedByCatchAll(t *testing.T) {
+	handlerFunc := func(_ http.ResponseWriter, _ *http.Request, _ Params) {}
+
+	router := New()
+	router.GET("/files/:dir/*filepath", handlerFunc)
+
+	testRoutes := []struct {
+		route    string
+		code     int
+		location string
+	}{
+		// The correctly spelled path must still be served directly.
+		{"/files/js/", http.StatusOK, ""},
+		{"/files/js/inc/framework.js", http.StatusOK, ""},
+		// RedirectFixedPath must repair the case of the static and param parts.
+		{"/FILES/js/", http.StatusMovedPermanently, "/files/js/"},
+		// The catch-all value is user input and must keep its original case.
+		{"/FILES/JS/inc/A.Js", http.StatusMovedPermanently, "/files/JS/inc/A.Js"},
+		// No route at all must still be a 404.
+		{"/FILESX/js/", http.StatusNotFound, ""},
+	}
+	for _, tr := range testRoutes {
+		r, _ := http.NewRequest(http.MethodGet, tr.route, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, r)
+		if !(w.Code == tr.code && fmt.Sprint(w.Header().Get("Location")) == tr.location) {
+			t.Errorf("Param followed by catch-all, route %s failed: Code=%d, Location=%v, want Code=%d, Location=%s",
+				tr.route, w.Code, w.Header().Get("Location"), tr.code, tr.location)
+		}
+	}
+}
+
 func TestRouterPanicHandler(t *testing.T) {
 	router := New()
 	panicHandled := false

@@ -539,8 +539,15 @@ walk: // Outer loop for walking the tree
 					// Find rune start.
 					// Runes are up to 4 byte long,
 					// -4 would definitely be another rune.
+					// An empty node path contributes no common prefix, but
+					// the next rune still starts at byte 0, so the scan
+					// length has a lower bound of 1.
 					var off int
-					for max := min(npLen, 3); off < max; off++ {
+					scanLen := npLen
+					if scanLen < 1 {
+						scanLen = 1
+					}
+					for max := min(scanLen, 3); off < max; off++ {
 						if i := npLen - off; utf8.RuneStart(oldPath[i]) {
 							// read rune from cached path
 							rv, _ = utf8.DecodeRuneInString(oldPath[i:])
