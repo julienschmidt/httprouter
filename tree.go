@@ -324,6 +324,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
 func (n *node) getValue(path string, params func() *Params) (handle Handle, ps *Params, tsr bool) {
+	var parentHandle Handle
 walk: // Outer loop for walking the tree
 	for {
 		prefix := n.path
@@ -338,6 +339,7 @@ walk: // Outer loop for walking the tree
 					idxc := path[0]
 					for i, c := range []byte(n.indices) {
 						if c == idxc {
+							parentHandle = n.handle
 							n = n.children[i]
 							continue walk
 						}
@@ -378,6 +380,7 @@ walk: // Outer loop for walking the tree
 					if end < len(path) {
 						if len(n.children) > 0 {
 							path = path[end:]
+							parentHandle = n.handle
 							n = n.children[0]
 							continue walk
 						}
@@ -427,16 +430,15 @@ walk: // Outer loop for walking the tree
 				return
 			}
 
-			// If there is no handle for this route, but this route has a
-			// wildcard child, there must be a handle for this path with an
-			// additional trailing slash
+			// If the path ends at a separator before a wildcard, redirect only
+			// when the parent handles the path without the trailing slash.
 			if path == "/" && n.wildChild && n.nType != root {
-				tsr = true
+				tsr = parentHandle != nil
 				return
 			}
 
 			if path == "/" && n.nType == static {
-				tsr = true
+				tsr = parentHandle != nil
 				return
 			}
 
@@ -453,9 +455,9 @@ walk: // Outer loop for walking the tree
 			return
 		}
 
-		// Nothing found. We can recommend to redirect to the same URL with an
-		// extra trailing slash if a leaf exists for that path
-		tsr = (path == "/") ||
+		// Nothing found. Only redirect if the parent handles the path without
+		// the trailing slash, or this node handles it with an extra slash.
+		tsr = (path == "/" && parentHandle != nil) ||
 			(len(prefix) == len(path)+1 && prefix[len(path)] == '/' &&
 				path == prefix[:len(prefix)-1] && n.handle != nil)
 		return
@@ -505,6 +507,7 @@ func shiftNRuneBytes(rb [4]byte, n int) [4]byte {
 // Recursive case-insensitive lookup function used by n.findCaseInsensitivePath
 func (n *node) findCaseInsensitivePathRec(path string, ciPath []byte, rb [4]byte, fixTrailingSlash bool) []byte {
 	npLen := len(n.path)
+	var parentHandle Handle
 
 walk: // Outer loop for walking the tree
 	for len(path) >= npLen && (npLen == 0 || strings.EqualFold(path[1:npLen], n.path[1:])) {
@@ -527,6 +530,7 @@ walk: // Outer loop for walking the tree
 					for i, c := range []byte(n.indices) {
 						if c == idxc {
 							// continue with child node
+							parentHandle = n.handle
 							n = n.children[i]
 							npLen = len(n.path)
 							continue walk
@@ -582,6 +586,7 @@ walk: // Outer loop for walking the tree
 							// Uppercase matches
 							if c == idxc {
 								// Continue with child node
+								parentHandle = n.handle
 								n = n.children[i]
 								npLen = len(n.path)
 								continue walk
@@ -614,6 +619,7 @@ walk: // Outer loop for walking the tree
 				if end < len(path) {
 					if len(n.children) > 0 {
 						// Continue with child node
+						parentHandle = n.handle
 						n = n.children[0]
 						npLen = len(n.path)
 						path = path[end:]
@@ -673,7 +679,7 @@ walk: // Outer loop for walking the tree
 	// Nothing found.
 	// Try to fix the path by adding / removing a trailing slash
 	if fixTrailingSlash {
-		if path == "/" {
+		if path == "/" && parentHandle != nil {
 			return ciPath
 		}
 		if len(path)+1 == npLen && n.path[len(path)] == '/' &&

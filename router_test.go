@@ -413,6 +413,10 @@ func TestRouterNotFound(t *testing.T) {
 	router.GET("/path", handlerFunc)
 	router.GET("/dir/", handlerFunc)
 	router.GET("/", handlerFunc)
+	router.GET("/a/:id/b/", handlerFunc)
+	router.GET("/parent/:id", handlerFunc)
+	router.GET("/parent/:id/child/", handlerFunc)
+	router.GET("/parent/:id/child/:name/end", handlerFunc)
 
 	testRoutes := []struct {
 		route    string
@@ -428,6 +432,14 @@ func TestRouterNotFound(t *testing.T) {
 		{"/DIR", http.StatusMovedPermanently, "/dir/"},     // Fixed Case +/
 		{"/../path", http.StatusMovedPermanently, "/path"}, // CleanPath
 		{"/nope", http.StatusNotFound, ""},                 // NotFound
+
+		{"/a/x/", http.StatusNotFound, ""},                       // No handler at /a/x
+		{"/a/x/b", http.StatusMovedPermanently, "/a/x/b/"},       // TSR +/
+		{"/A/x/B/", http.StatusMovedPermanently, "/a/x/b/"},      // Fixed Case
+		{"/parent/x/", http.StatusMovedPermanently, "/parent/x"}, // Existing param handler
+		{"/PARENT/x/", http.StatusMovedPermanently, "/parent/x"}, // Fixed Case -/
+		{"/parent/x/child/y/", http.StatusNotFound, ""},          // No handler at a deeper param
+		{"/PARENT/x/child/y/", http.StatusNotFound, ""},          // Fixed Case must also find a handler
 	}
 	for _, tr := range testRoutes {
 		r, _ := http.NewRequest(http.MethodGet, tr.route, nil)
@@ -468,6 +480,29 @@ func TestRouterNotFound(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !(w.Code == http.StatusNotFound) {
 		t.Errorf("NotFound handling route / failed: Code=%d", w.Code)
+	}
+}
+
+func TestRouterNotFoundChained(t *testing.T) {
+	router := New()
+	router.GET("/users/:user_id/somedata/", func(http.ResponseWriter, *http.Request, Params) {})
+
+	fallback := New()
+	fallback.GET("/users/profile/", func(w http.ResponseWriter, _ *http.Request, _ Params) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	router.NotFound = fallback
+
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	response, err := http.Get(server.URL + "/users/profile/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusNoContent {
+		t.Errorf("chained NotFound handler returned status %d, want %d", response.StatusCode, http.StatusNoContent)
 	}
 }
 
