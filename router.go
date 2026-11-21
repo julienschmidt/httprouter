@@ -501,9 +501,11 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					r.RedirectTrailingSlash,
 				)
 				if found {
-					req.URL.Path = fixedPath
-					http.Redirect(w, req, req.URL.String(), code)
-					return
+					if target, _, _ := root.getValue(fixedPath, nil); target != nil {
+						req.URL.Path = fixedPath
+						http.Redirect(w, req, req.URL.String(), code)
+						return
+					}
 				}
 			}
 		}
