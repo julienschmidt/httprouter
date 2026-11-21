@@ -324,6 +324,21 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
 func (n *node) getValue(path string, params func() *Params) (handle Handle, ps *Params, tsr bool) {
+	handle, ps, tsr = n.getValueImpl(path, params)
+	if tsr && path != "" && path != "/" {
+		if path[len(path)-1] == '/' {
+			path = path[:len(path)-1]
+		} else {
+			path += "/"
+		}
+		if target, _, _ := n.getValueImpl(path, nil); target == nil {
+			tsr = false
+		}
+	}
+	return
+}
+
+func (n *node) getValueImpl(path string, params func() *Params) (handle Handle, ps *Params, tsr bool) {
 walk: // Outer loop for walking the tree
 	for {
 		prefix := n.path

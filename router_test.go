@@ -471,6 +471,19 @@ func TestRouterNotFound(t *testing.T) {
 	}
 }
 
+func TestRouterNotFoundDoesNotRedirectToMissingTarget(t *testing.T) {
+	router := New()
+	router.GET("/users/:user_id/somedata/", func(http.ResponseWriter, *http.Request, Params) {})
+
+	req, _ := http.NewRequest(http.MethodGet, "/users/profile/", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d with Location %q", http.StatusNotFound, w.Code, w.Header().Get("Location"))
+	}
+}
+
 func TestRouterPanicHandler(t *testing.T) {
 	router := New()
 	panicHandled := false
